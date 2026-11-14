@@ -1,0 +1,21 @@
+OrbitInfer
+
+Derived from Resin by Eric Zhang and contributors:
+https://github.com/ekzhang/resin
+Revision a1989594d81921be3bffe43804eb0550b216ca64
+Apache License, Version 2.0.
+
+The complete original notice is retained in third_party/resin/NOTICE.
+Its paths refer to the upstream tree; some listed model implementations are not
+included here. The file-level selection and original hashes are recorded in
+third_party/resin/import.json. Namespace, packaging and scope adaptations are
+described in docs/source-import.md.
+
+The DeepSeek model contains MIT-licensed checkpoint code and Apache-2.0
+DeepInfer-derived operators. Their original licenses remain at:
+models/cuda/orbitinfer_models_cuda/deepseek_v41/LICENSE
+models/cuda/orbitinfer_models_cuda/deepseek_v41/upstream/LICENSE
+
+Native recipe third-party licenses remain in crates/orbitinfer-recipe/licenses.
+No checkpoint weights are distributed. The retained upstream hardware reports
+are provenance, not OrbitInfer qualification.

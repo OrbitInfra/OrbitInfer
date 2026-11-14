@@ -1,0 +1,16 @@
+# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+[package]
+name = "orbitinfer-core"
+version = "0.1.0-dev.1"
+edition = "2024"
+publish = false
+rust-version = "1.96"
+license = "Apache-2.0"
+description = "Pure Rust scheduling and resource ownership for OrbitInfer"
+
+[dependencies]
+rkyv.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+prometheus-client.workspace = true

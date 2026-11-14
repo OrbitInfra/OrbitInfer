@@ -1,0 +1,2 @@
+# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# OrbitInfer ships inline/stub typing information for its public package.

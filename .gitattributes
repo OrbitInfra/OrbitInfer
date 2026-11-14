@@ -1,0 +1,2 @@
+# Prompt bytes retain the upstream terminal separator exactly.
+crates/orbitinfer-recipe/src/deepseek/tools.txt whitespace=-blank-at-eof
