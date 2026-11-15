@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import faulthandler
 import json
 import re
 import socket
@@ -120,6 +121,7 @@ class RankRunner:
 
 
 def _serve_rank(rank, world_size, directory, port, case):
+    faulthandler.enable(all_threads=True)
     patch = pytest.MonkeyPatch()
     finished = threading.Event()
     stopper = None
