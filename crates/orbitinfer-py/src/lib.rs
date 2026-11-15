@@ -44,6 +44,29 @@ use runner::{
     resolve_runner_config, resolve_runner_contract, runner_error_is_post_accept,
 };
 
+// PyO3's from_py_object expansion always clones. These enums are Copy; preserve
+// its guard errors and inspection hints without suppressing clone_on_copy.
+macro_rules! copy_from_py_object {
+    ($($kind:ty),+ $(,)?) => {$(
+        impl<'a, 'py> FromPyObject<'a, 'py> for $kind {
+            type Error = pyo3::pyclass::PyClassGuardError<'a, 'py>;
+            const INPUT_TYPE: pyo3::inspect::PyStaticExpr =
+                <Self as pyo3::PyTypeInfo>::TYPE_HINT;
+
+            fn extract(obj: Borrowed<'a, 'py, PyAny>) -> Result<Self, Self::Error> {
+                Ok(*obj.extract::<pyo3::PyClassGuard<'_, Self>>()?)
+            }
+        }
+    )+};
+}
+
+copy_from_py_object!(
+    CacheRetention,
+    CacheGroupFamily,
+    recipe_types::Role,
+    BatchPhase
+);
+
 fn default_sampling_seed(engine_id: u64, request_id: u64) -> i64 {
     // SplitMix64 gives stable, well-distributed row seeds without adding a
     // control-plane RNG or making batch composition part of randomness.
@@ -137,7 +160,7 @@ impl SchedulerConfig {
     eq,
     hash,
     rename_all = "SCREAMING_SNAKE_CASE",
-    from_py_object,
+    skip_from_py_object,
     module = "orbitinfer._native"
 )]
 #[derive(

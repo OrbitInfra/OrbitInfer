@@ -31,7 +31,7 @@ fn plan_error(error: KvPlanError) -> PyErr {
     eq,
     hash,
     rename_all = "SCREAMING_SNAKE_CASE",
-    from_py_object,
+    skip_from_py_object,
     module = "orbitinfer._native"
 )]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -46,7 +46,7 @@ pub(crate) enum CacheRetention {
     eq,
     hash,
     rename_all = "SCREAMING_SNAKE_CASE",
-    from_py_object,
+    skip_from_py_object,
     module = "orbitinfer._native"
 )]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

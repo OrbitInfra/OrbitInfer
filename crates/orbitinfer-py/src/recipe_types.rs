@@ -18,7 +18,7 @@ use serde_json::{Map, Value, json};
 /// Some roles are model-specific; recipes validate supported roles.
 #[non_exhaustive]
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-#[pyclass(frozen, eq, eq_int, from_py_object, module = "orbitinfer._native")]
+#[pyclass(frozen, eq, eq_int, skip_from_py_object, module = "orbitinfer._native")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Role {
     SYSTEM,

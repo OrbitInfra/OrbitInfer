@@ -198,7 +198,9 @@ def test_last_engine_reference_drains_before_releasing_the_arena():
             assert not returned.is_set()
             assert retained_runner() is not None and retained_arena() is not None
             assert all(view() is not None for view in store.views)
-            assert retained_arena().tolist() == [99] * 33
+            actual = retained_arena()
+            assert actual is not None and actual.tolist() == [99] * 33
+            del actual
         finally:
             store.transfer.retirement.set_result(None)
         dropping.result(30)
