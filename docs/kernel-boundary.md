@@ -129,3 +129,15 @@ failure quarantines resources even if CUDA synchronization succeeds: an
 in-place recurrent-state or sliding-window update cannot be undone by waiting
 for the device. Graph host-input validation remains retryable because it occurs
 before device copies or model execution.
+
+## Final owner drop
+
+Native applications pass an `Arc` with the arena/runtime owner to
+`EngineCore::new`. It must include every allocation the runner can access, including
+transient work. `Error::rejected` is valid only when no persistent state changed
+and no outstanding access remains. An uncertain failure poisons execution and
+retains the owner and logical charges after core drop. Python retains the bound
+runner, completion objects and temporary failure frames. This is containment,
+not retirement: call `close` after successfully harvesting every accepted step
+for ordinary release. An installed device profile must verify these receipts on
+its runtime; CPU controls do not prove GPU quiescence.

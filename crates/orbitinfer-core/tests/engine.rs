@@ -93,6 +93,7 @@ fn engine(lookahead: u32, chunk: u32) -> EngineCore<&'static str> {
             ..Default::default()
         },
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap()
 }
@@ -125,6 +126,7 @@ fn admission_credits_restored_physical_prefix_pages_only() {
                 ..Default::default()
             },
             true,
+            std::sync::Arc::new(()),
         )
         .unwrap();
         engine.enable_metrics().unwrap();
@@ -213,6 +215,7 @@ fn check_stopped_speculative_prefix(stop_token: bool) {
                 32,
                 SchedulerConfig::default(),
                 true,
+                std::sync::Arc::new(()),
             )
             .unwrap();
             let mut model = Model {
@@ -531,6 +534,7 @@ fn panicking_checkpoint_access_quarantines_the_accepted_transaction() {
                 128,
                 SchedulerConfig::default(),
                 false,
+                std::sync::Arc::new(()),
             )
             .unwrap()
         };
@@ -584,6 +588,7 @@ fn malformed_output_and_receipt_panic_quarantine_before_any_result_is_published(
                 128,
                 SchedulerConfig::default(),
                 false,
+                std::sync::Arc::new(()),
             )
             .unwrap()
         };
@@ -664,6 +669,7 @@ fn a_panicking_payload_clone_restores_the_cohort_and_releases_its_cache_access()
         128,
         SchedulerConfig::default(),
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     let mut handles = Vec::new();
@@ -807,6 +813,7 @@ fn decode_continuation_transfers_writer_lease_and_commits_exact_feedback_depth()
         512,
         SchedulerConfig::default(),
         true,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     let mut model = Model::default();
@@ -868,6 +875,7 @@ fn unsafe_decode_boundaries_fall_back_before_enqueuing_a_continuation() {
             512,
             SchedulerConfig::default(),
             false,
+            std::sync::Arc::new(()),
         )
         .unwrap();
         let mut model = Model::default();
@@ -916,6 +924,7 @@ fn cross_page_engine(prefix_cache: bool) -> EngineCore<&'static str> {
         256,
         SchedulerConfig::default(),
         prefix_cache,
+        std::sync::Arc::new(()),
     )
     .unwrap()
 }
@@ -1029,6 +1038,7 @@ fn shifted_decode_engine() -> Result<EngineCore<&'static str>, Error> {
         128,
         SchedulerConfig::default(),
         false,
+        std::sync::Arc::new(()),
     )
 }
 
@@ -1089,6 +1099,7 @@ fn accepted_limit_defaults_to_one_and_rejects_zero_or_overflowing_write_footprin
             128,
             SchedulerConfig::default(),
             false,
+            std::sync::Arc::new(()),
         );
         assert_eq!(result.err().unwrap().kind, ErrorKind::InvalidInput);
     }
@@ -1114,6 +1125,7 @@ fn shifted_write_guard_survives_a_near_context_limit_without_changing_outputs() 
             128,
             SchedulerConfig::default(),
             false,
+            std::sync::Arc::new(()),
         )
         .unwrap();
         assert!(engine.submit(input(vec![1; 126], 4)).is_err());
@@ -1210,6 +1222,7 @@ fn window_guard_bounds_automatic_reservation_and_rejects_an_oversized_write() {
             256,
             SchedulerConfig::default(),
             false,
+            std::sync::Arc::new(()),
         );
         if read_window == 9 {
             assert_eq!(result.err().unwrap().kind, ErrorKind::InvalidInput);
@@ -1253,6 +1266,7 @@ fn window_guard_bounds_automatic_reservation_and_rejects_an_oversized_write() {
             256,
             SchedulerConfig::default(),
             false,
+            std::sync::Arc::new(()),
         )
         .is_ok()
     );
@@ -1299,6 +1313,7 @@ fn hybrid_reservation_engine(prefix_cache: bool) -> EngineCore<&'static str> {
             ..Default::default()
         },
         prefix_cache,
+        std::sync::Arc::new(()),
     )
     .unwrap()
 }
@@ -1468,6 +1483,7 @@ fn hybrid_reservation_supports_distinct_private_state_checkpoint_cadences() {
         2048,
         SchedulerConfig::default(),
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     let mut model = Model::default();
@@ -1612,6 +1628,7 @@ fn rounded_reservation_tail_cannot_exceed_a_windows_declared_write_guard() {
         256,
         SchedulerConfig::default(),
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     let mut model = Model::default();
@@ -1654,6 +1671,7 @@ fn bounded_reservation_engine(capacity: u32, context: u32) -> EngineCore<&'stati
             ..Default::default()
         },
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap()
 }
@@ -1849,6 +1867,7 @@ fn stop_overlap_engine() -> EngineCore<&'static str> {
         512,
         SchedulerConfig::default(),
         true,
+        std::sync::Arc::new(()),
     )
     .unwrap()
 }
@@ -1988,6 +2007,7 @@ fn retraction_counts_compute_replay_without_duplicating_logical_tokens() {
             ..Default::default()
         },
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     engine.enable_metrics().unwrap();
@@ -2131,6 +2151,7 @@ fn failure_after_next_enqueue_keeps_transferred_lease_quarantined() {
             512,
             SchedulerConfig::default(),
             false,
+            std::sync::Arc::new(()),
         )
         .unwrap();
         let mut model = Model::default();
@@ -2173,6 +2194,7 @@ fn waiting_prefix_owners_are_retracted_before_running_requests_under_pressure() 
             ..Default::default()
         },
         true,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     let mut model = Model::default();
@@ -2245,6 +2267,7 @@ fn failed_prefill_growth_releases_unadmitted_pages_before_retrying_running_work(
             schedule_conservativeness: 0.0,
         },
         true,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     let mut model = Model::default();
@@ -2304,6 +2327,7 @@ fn a_displaced_rejected_request_does_not_block_a_higher_priority_request() {
         3,
         SchedulerConfig::default(),
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap();
     let mut model = Model::default();
@@ -2327,4 +2351,59 @@ fn a_displaced_rejected_request_does_not_block_a_higher_priority_request() {
     assert_eq!(higher.take_result().unwrap(), [11, 12, 13]);
     assert_eq!(rejected.take_result().unwrap(), [4]);
     assert_eq!(engine.cache_free_parent_count(), Some(3));
+}
+
+#[test]
+fn final_core_drop_retains_actual_backing_until_execution_retirement() {
+    use std::sync::Arc;
+    for outcome in ["pending", "failed", "success", "rejected"] {
+        let backing = Arc::new(vec![73_u8; 64]);
+        let weak = Arc::downgrade(&backing);
+        let mut engine = EngineCore::new(
+            RunnerConfig {
+                cache_layout: Some(
+                    KvLayout::new(
+                        4,
+                        vec![KvGroupLayout::new(2, 1, KvRetention::FullContext).unwrap()],
+                    )
+                    .unwrap(),
+                ),
+                ..Default::default()
+            },
+            1,
+            32,
+            SchedulerConfig::default(),
+            false,
+            backing,
+        )
+        .unwrap();
+        let mut model = Model::default();
+        let request = engine.submit(input(vec![1], 1)).unwrap();
+        engine.prepare_step(&mut model, None).unwrap().unwrap();
+        if outcome != "pending" {
+            let rows = owned_rows(vec![vec![2]]);
+            let result = match outcome {
+                "failed" => Err(Error::execution("device receipt failed")),
+                "rejected" => Err(Error::rejected("proved no access")),
+                _ => Ok(rows.view()),
+            };
+            let completed = engine.complete_step_with(&mut model, result, Ok);
+            assert_eq!(completed.is_ok(), outcome == "success");
+        }
+        let uncertain = matches!(outcome, "pending" | "failed");
+        if uncertain {
+            assert!(!request.done());
+            assert_eq!(engine.cache_occupied_block_count(), Some(1));
+            assert!(engine.close(&mut model).is_err());
+            assert!(model.released.is_empty());
+        } else {
+            engine.close(&mut model).unwrap();
+            assert_eq!(engine.cache_occupied_block_count(), Some(0));
+        }
+        drop(engine);
+        assert_eq!(weak.upgrade().is_some(), uncertain);
+        if uncertain {
+            assert_eq!(weak.upgrade().unwrap().as_slice(), &[73; 64]);
+        }
+    }
 }

@@ -12,10 +12,13 @@ from test_flat_cache import RecordingCachedRunner
 
 from orbitinfer import CacheGroupLayout, CacheLayout, Engine, SamplingParams
 from orbitinfer.cache_storage import (
+    CacheIdentity,
     CacheRetirementError,
     CacheTransfer,
     MemoryCacheStorage,
 )
+
+IDENTITY = CacheIdentity("fixture", "weights-1", "bytes-1", "uint8", "tp=0/1", "plain")
 
 
 def make_engine(
@@ -27,6 +30,8 @@ def make_engine(
     running=32,
     exports=None,
     capacity=32,
+    identity=IDENTITY,
+    max_bytes=4096,
 ):
     runner = RecordingCachedRunner(
         CacheLayout(parent_capacity=capacity, groups=[CacheGroupLayout(2)])
@@ -41,7 +46,12 @@ def make_engine(
         )
 
     setattr(runner, "cache_storage_buffers", buffers)
-    options: dict[str, Any] = dict(prefix_cache=True, max_running_requests=running)
+    options: dict[str, Any] = dict(
+        prefix_cache=True,
+        max_running_requests=running,
+        prefix_cache_identity=identity,
+        prefix_cache_max_bytes=max_bytes,
+    )
     if limit is not None:
         options["prefix_cache_max_inflight"] = limit
     if policy is not None:
@@ -285,7 +295,13 @@ def test_storage_inflight_limit(running, limit, expected):
                 prefix_cache_storage_policy="invalid",  # ty: ignore[invalid-argument-type]
             )
         assert unsupported.bindings == []
-        Engine(unsupported, prefix_cache=True, prefix_cache_storage=store).close()
+        Engine(
+            unsupported,
+            prefix_cache=True,
+            prefix_cache_storage=store,
+            prefix_cache_identity=IDENTITY,
+            prefix_cache_max_bytes=4096,
+        ).close()
 
     def lookup(keys):
         future = Future()

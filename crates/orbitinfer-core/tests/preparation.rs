@@ -102,6 +102,7 @@ fn engine(prefix: bool) -> EngineCore<Payload> {
             ..Default::default()
         },
         prefix,
+        std::sync::Arc::new(()),
     )
     .unwrap()
 }

@@ -14,6 +14,7 @@ import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
+from gloo_helpers import release_cpu_group_handles
 from output_helpers import forward_output
 
 from orbitinfer import (
@@ -283,6 +284,8 @@ def _run_case(groups, case):
                 if not failed:
                     assert engine.local.cache_free_parent_count == 64
     assert failed == (case != "normal")
+    assert worker.closed
+    worker._wire.group = None
     return {
         "calls": runner.calls,
         "bindings": runner.bindings,
@@ -467,6 +470,7 @@ def _distributed_process(rank, world_size, rendezvous, directory):
     finally:
         replicated.close()
         dist.destroy_process_group()
+        release_cpu_group_handles(groups, shared, tensor_only, overlap, replicated)
     Path(directory, f"{rank}.json").write_text(json.dumps(records))
 
 

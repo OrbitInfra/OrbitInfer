@@ -88,12 +88,16 @@ def test_storage_namespace_survives_reads_writes_and_engine_recreation(media, po
                     assert complete(engine, cache_salt=salt, **prompt) == 4
 
 
-def test_unsalted_storage_keys_are_unchanged_and_disjoint_from_salted_keys():
+def test_storage_keys_bind_identity_and_length_delimited_namespace():
     storage = object.__new__(_PrefixStorage)
+    storage.identity = b"fixture identity"
     storage.alignment = 2
     tokens = [1, 2, 3, 4]
     encoded = np.asarray(tokens, dtype="<u4").tobytes()
-    expected = [hashlib.sha256(encoded[:end]).digest() for end in (8, 16)]
+    expected = [
+        hashlib.sha256(storage.identity + bytes(8) + encoded[:end]).digest()
+        for end in (8, 16)
+    ]
     assert storage._keys(([], tokens)) == expected
     namespaces = [[], [2**32 - 1], [97, 2**32 - 1], [97, 98, 99, 2**32 - 1]]
     keys = [storage._keys((namespace, tokens)) for namespace in namespaces]
