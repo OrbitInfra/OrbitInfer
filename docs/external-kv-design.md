@@ -1,8 +1,9 @@
 # Hierarchical external KV cache
 
-Design proposal for review. The current implementation is described in
-[prefix cache storage](cache-storage.md); this page specifies its next extension.
-No OrbitKV, Mooncake Store or LMCache adapter is implemented by this change.
+Design and implementation sequence. The current interface and independent
+retirement receipts are described in [prefix cache storage](cache-storage.md).
+Identity binding, byte budgets and the provider adapters remain proposed work.
+No OrbitKV, Mooncake Store or LMCache adapter is implemented yet.
 
 ## Scope
 
@@ -61,7 +62,7 @@ not a cache provider or a global directory.
 | Existing owner | Keep | Work required before integration |
 | --- | --- | --- |
 | `EngineCore` and `PagedKvResources` | Prefix matching, page allocation, storage jobs and commit | Prove final-reference retention of actual backing; add byte accounting for external operations |
-| `PrefixStorage` / `PrefixStorageOperation` | Native lookup/transfer/poll boundary | Carry separate outcome and retirement evidence without a second progress loop |
+| `PrefixStorage` / `PrefixStorageOperation` | Native lookup/transfer/poll boundary; Python outcome/retirement receipts | Complete the remaining native-runner backing audit without a second progress loop |
 | `_PrefixStorage` / `CacheStorage` | `lookup`, `load`, `store`; immutable objects | Bind representation identity and validate provider retirement semantics |
 | `cache_storage_buffers` | Runner's named region views, no export-time copy | Retain arena and registration owners, generation and producer readiness explicitly |
 | `MemoryCacheStorage` | Bounded DRAM reference provider and existing controls | Audit final-owner and failed-fence paths before declaring the new contract complete |
@@ -136,11 +137,12 @@ any copy. An exporter must include all bytes a resumed kernel can read.
 | Failure and borrowed-buffer retirement proven | Discard private restored pages and recompute, or abandon a backup |
 | Unknown retirement / failed native cleanup | Quarantine actual owners, keep charges, stop admission to the affected owner; no retry or fabricated completion |
 
-The existing Python future contract encodes these cases as pending, `True`,
-`False`/terminal exception, and `None`. A terminal exception currently authorizes
-buffer reuse. An adapter must therefore never turn a backend timeout or failed
-fence into such an exception while DMA could remain active. P0 must make this
-distinction explicit in internal operation state and test it through the binding.
+The Python interface now returns `CacheTransfer` with separate outcome and
+retirement futures. A logical exception cannot release buffers. The binding
+returns a terminal native transfer result only after a successful retirement
+receipt; failed retirement is sticky, retains the actual exported views and
+fences new storage work. This is tested through the real Engine, including final
+reference drop. The wider native-runner and GPU execution audit remains in P0.
 
 For load, acquire private destination write leases before accepting physical
 work, and order copies after source readiness. Make the restored pages visible
@@ -220,7 +222,30 @@ LMCache documents a separate MP service with a typed request client. Audit one
 fixed client/server version before selecting it; do not import a vLLM/SGLang
 connector as OrbitInfer's scheduler or assume a service reply proves GPU drain.
 Neither optional adapter introduces a mandatory C++ or Python service into the
-Rust Engine. No external backend is a dependency in this design-only change.
+Rust Engine. No external backend is a dependency of the core.
+
+## Correspondence with serving engines
+
+References checked on 2026-11-15; these are design inputs, not runtime dependencies.
+Use the separation of responsibilities without importing another scheduler.
+
+| Reference boundary | OrbitInfer counterpart | Initial limit |
+| --- | --- | --- |
+| vLLM `get_num_new_matched_tokens` / `update_state_after_alloc` | Native prefix lookup, then private page reservation | Retain current resident-prefix-first policy |
+| vLLM `register_kv_caches` / `start_load_kv` / `save_kv_layer` | Runner exporter and provider load/store | Whole checkpoints initially; no layer-streamed resume |
+| vLLM `request_finished` / `get_finished` / `wait_for_save` | Retain page loans until the independent retirement receipt | A request's logical end never releases an active copy |
+| SGLang `HiCacheStorage` and registered host pools | One provider owns DRAM/SSD/peer storage; runner retains device backing | No second host-cache manager inside OrbitInfer |
+| SGLang `PoolTransfer` and representation/shard configuration | Named checkpoint groups and planned identity binding | No implicit layout conversion or resharding |
+
+vLLM explicitly lets a connector retain blocks after request completion and
+report their completion later. SGLang supplies separate backend operations over
+registered pools and named state components. OrbitInfer keeps its existing Rust
+`PrefixStorage` owner and Python `CacheStorage` boundary. The independent
+`CacheTransfer.retirement` receipt makes buffer-release authority explicit even
+when an adapter reports a logical error first.
+
+Pinned sources: [vLLM connector](https://github.com/vllm-project/vllm/blob/85217ffebbab2905386bac2e38566e09912da25a/vllm/distributed/kv_transfer/kv_connector/v1/base.py)
+and [SGLang HiCache storage](https://github.com/sgl-project/sglang/blob/17e4738c4c94310d506328415831724f08ed9614/python/sglang/srt/mem_cache/hicache_storage.py).
 
 ## Acceptance and sequence
 
@@ -240,7 +265,8 @@ must force interleavings and inspect backing and budget receipts.
 
 1. **P0: ownership and identity.** Audit the current Rust/Python path, retain
    actual arena backing across final drops, and add identity and byte bounds.
-   Prove the contract with `MemoryCacheStorage` and controlled failures.
+   The Python storage receipt/view-retention controls are implemented. Native
+   execution backing, identity binding and byte accounting remain open.
 2. **P3a: OrbitKV local DRAM.** Add the thin adapter and a CPU contract test.
    Write the SM100 runner export/producer/readiness gate; run it only on an
    explicitly authorized installed host. Do not modify OrbitKV from this work.

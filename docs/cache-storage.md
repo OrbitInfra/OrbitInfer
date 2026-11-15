@@ -7,9 +7,9 @@ a storage provider keeps immutable checkpoints outside the
 custom providers can implement other storage tiers through the same interface.
 
 The [hierarchical external KV proposal](external-kv-design.md) specifies identity,
-retirement, byte budgets and the planned OrbitKV/Mooncake Store/LMCache adapters.
-It is a design for review. This guide describes the currently implemented API;
-none of those three adapters is available yet.
+byte budgets and the planned OrbitKV/Mooncake Store/LMCache adapters. Independent
+operation and retirement receipts are implemented below. The remaining proposal
+is not an integration claim; none of those three adapters is available yet.
 
 ## Using the DRAM cache
 
@@ -128,15 +128,16 @@ lengths contribute to request cached-token metrics.
 
 ## Implementing a provider
 
-The [`CacheStorage` protocol](../orbitinfer/cache_storage.py) has three methods. Each
-submits work and returns a `concurrent.futures.Future` promptly, without waiting
-for I/O. These are ordinary methods returning futures, not `async def` methods.
+The [`CacheStorage` protocol](../orbitinfer/cache_storage.py) has three methods.
+Each returns promptly without waiting for I/O. Lookup returns a
+`concurrent.futures.Future`; load and store return a `CacheTransfer` containing
+two futures. These are ordinary methods, not `async def` methods.
 
 | Method | Result |
 |---|---|
 | `lookup(keys)` | A tuple of presence booleans in key order. |
-| `store(keys, buffers)` | Transfer success, or unknown completion as described below. |
-| `load(keys, buffers)` | Transfer success, or unknown completion as described below. |
+| `store(keys, buffers)` | `CacheTransfer`: publication outcome and borrowed-source retirement. |
+| `load(keys, buffers)` | `CacheTransfer`: whole-load outcome and borrowed-destination retirement. |
 
 Keys are opaque `bytes` values. For transfers, `keys` and `buffers` have equal
 lengths, and `buffers[i]` maps string region names to borrowed, contiguous
@@ -158,24 +159,44 @@ providers or partitions for incompatible model or cache representations.
 
 ### Transfer completion
 
-A transfer future also defines when OrbitInfer may recycle its buffers:
+`CacheTransfer(outcome, retirement)` separates the two facts:
 
-- `True` means the transfer succeeded and all accesses to the borrowed buffers
-  have finished. A successful load must fill every requested region.
-- `False`, or a terminal exception, means the operation failed but all buffer
-  accesses have finished. The Engine can discard a failed restore safely.
-- `None` means buffer access may still be outstanding. OrbitInfer retains the owners;
-  Engine shutdown raises instead of releasing memory that may still be in use.
+- `outcome: Future[bool]` reports success (`True`), a miss/failure (`False`), or an
+  operation exception. A successful load fills every requested region. A
+  successful store publishes an immutable object that can be served completely.
+- `retirement: Future[None]` succeeds with `None` only when all accesses to the
+  borrowed buffers have ended. Pending, cancellation, an exception or a non-None
+  result is not a release receipt. Failed retirement is sticky.
 
-Providers must order GPU copies after the work that produced their inputs. A
-separate CUDA stream alone does not establish that ordering. Resolve a transfer
-with `True`, `False` or an exception only after all borrowed-buffer accesses have
-finished. `future.done()` must also return promptly. Cancellation is not proof of
-completion.
+The Engine consumes an outcome only after successful retirement. A failed
+outcome can arrive earlier without releasing pages. A retirement failure fences
+new transfers to that storage binding and keeps the operation's exact exported
+views, runner and page charges. Close reports failure; dropping the final Engine
+reference still retains the unquiesced owners. A provider submission that raises
+without returning a receipt is also conservatively unquiesced: it may have
+accepted work before raising. Reject capacity before accepting access, then return
+a failed outcome with successful retirement when nothing was posted.
 
-Completion covers the borrowed buffers. A provider can manage several tiers by
-staging data in its own allocation, then continuing remote I/O against that copy
-after the GPU transfer has finished. The provider owns that copy and its lifetime.
+Providers own and complete both futures. Consumers can inspect them but must not
+complete them. Cancelling an outcome is not cancellation of DMA. For example,
+the DRAM provider acknowledges a cancelled queued operation's retirement only
+when its worker proves that no copy was started. `future.done()` alone never
+authorizes buffer reuse. Providers must order GPU copies after their producer;
+a separate CUDA stream alone does not establish that dependency.
+
+For standalone use, `transfer.wait(timeout=...)` waits for both receipts within
+one timeout budget and returns the bool outcome. It propagates operation errors
+only after retirement and raises `CacheRetirementError` for an invalid or failed
+retirement receipt. A timeout does not cancel, release or replay the transfer.
+The Engine's normal polling uses the same receipts without blocking its scheduler.
+
+A provider can release the device source after a proven copy into its own charged
+staging allocation, then continue remote I/O against that copy. Retirement can
+therefore precede publication. The Engine conservatively retains its operation
+until both are observed; the provider cannot expose a partial object through
+lookup. Its own staging allocation remains retained until the later I/O retires.
+`MemoryCacheStorage.close()` raises `CacheRetirementError` after a failed fence;
+repeated close does not retry that native cleanup.
 
 ## Runner support
 

@@ -121,6 +121,8 @@ class RankRunner:
 
 def _serve_rank(rank, world_size, directory, port, case):
     patch = pytest.MonkeyPatch()
+    finished = threading.Event()
+    stopper = None
     dist.init_process_group(
         "gloo",
         init_method=f"file://{directory}/rendezvous",
@@ -283,15 +285,24 @@ def _serve_rank(rank, world_size, directory, port, case):
             if groups.drivers.local_rank == 0:
 
                 def stop():
-                    while not Path(directory, "stop").exists():
-                        time.sleep(0.01)
+                    while not finished.wait(0.01):
+                        if Path(directory, "stop").exists():
+                            break
                     server.shutdown()
 
-                threading.Thread(target=stop, daemon=True).start()
+                stopper = threading.Thread(target=stop)
+                stopper.start()
             server.serve(port=port)
     except BaseException as exc:
         error = str(exc)
     finally:
+        # Fault injection can end serve before the parent creates the stop file.
+        # Do not leave a daemon retaining server/engine/process-group objects
+        # while the child tears down Gloo or finalizes the Python interpreter.
+        finished.set()
+        if stopper is not None:
+            stopper.join(timeout=30)
+            assert not stopper.is_alive(), "shutdown watcher did not retire"
         patch.undo()
         Path(directory, f"rank-{rank}.json").write_text(
             json.dumps(
@@ -301,6 +312,7 @@ def _serve_rank(rank, world_size, directory, port, case):
                     "calls": runner.calls,
                     "released": runner.released,
                     "engine_closed": None if engine is None else engine.closed,
+                    "shutdown_joined": stopper is None or not stopper.is_alive(),
                 }
             )
         )
@@ -327,6 +339,57 @@ def _post(base, rank=None, *, content="hello", headers=None, **options):
     except urllib.error.HTTPError as error:
         error.add_note(error.read().decode())
         raise
+
+
+def test_rank_fixture_joins_watcher_before_destroying_process_groups(
+    tmp_path, monkeypatch
+):
+    """Force serve to return before the parent has published its stop file."""
+    threads, receipts = [], []
+    original_thread = threading.Thread
+
+    def track_thread(*args, **kwargs):
+        thread = original_thread(*args, **kwargs)
+        threads.append(thread)
+        return thread
+
+    def close_groups():
+        assert threads and all(not thread.is_alive() for thread in threads)
+        receipts.append("groups")
+
+    class EarlyServer:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def serve(self, **kwargs):
+            assert not (tmp_path / "stop").exists()
+            raise RuntimeError("forced return before parent stop")
+
+        def shutdown(self):
+            receipts.append("watcher")
+
+    groups = SimpleNamespace(
+        is_driver=True, drivers=SimpleNamespace(local_rank=0), close=close_groups
+    )
+    monkeypatch.setattr(threading, "Thread", track_thread)
+    monkeypatch.setattr(dist, "init_process_group", lambda *args, **kwargs: None)
+    monkeypatch.setattr(dist, "destroy_process_group", lambda: receipts.append("world"))
+    monkeypatch.setattr(ParallelGroups, "create", lambda *args, **kwargs: groups)
+    for name in ("DistributedWorker", "DistributedEngine"):
+        monkeypatch.setattr(
+            f"{__name__}.{name}", lambda *args, **kwargs: SimpleNamespace(closed=True)
+        )
+    monkeypatch.setattr(f"{__name__}.HttpServer", EarlyServer)
+    try:
+        _serve_rank(0, 2, str(tmp_path), 0, "counts")
+        assert receipts == ["watcher", "groups", "world"]
+        assert not (tmp_path / "stop").exists()
+    finally:
+        # Also terminates the old daemon when running the negative control.
+        (tmp_path / "stop").touch()
+        for thread in threads:
+            thread.join(timeout=30)
+            assert not thread.is_alive()
 
 
 def _wait_ready(base, directory):
@@ -552,6 +615,7 @@ def test_distributed_http_routes_real_replica_engines(tmp_path, case, world_size
         for rank in range(world_size)
     ]
     assert all(record["closed"] for record in records)
+    assert all(record["shutdown_joined"] for record in records)
     if case == "counts":
         assert all(record["error"] is None for record in records)
         assert all(not record["calls"] for record in records)

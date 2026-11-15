@@ -32,7 +32,12 @@ from orbitinfer._native import (
     TokenLogprobs,
     __version__,
 )
-from orbitinfer.cache_storage import CacheStorage, MemoryCacheStorage
+from orbitinfer.cache_storage import (
+    CacheRetirementError,
+    CacheStorage,
+    CacheTransfer,
+    MemoryCacheStorage,
+)
 from orbitinfer.protocols import (
     CacheExporter,
     ManagedRunner,
@@ -44,6 +49,8 @@ from orbitinfer.protocols import (
 __all__ = [
     "CacheExporter",
     "CacheStorage",
+    "CacheTransfer",
+    "CacheRetirementError",
     "BatchPhase",
     "BatchPlan",
     "CacheGroupFamily",

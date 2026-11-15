@@ -296,7 +296,18 @@ def scored_exchange(
     )
     results = []
     for stream in (False, True):
-        with running_server(Runner(), recipe) as (_, engine, _, errors, base, _):
+        # This runner produces tokens without device latency. Keep the whole
+        # scored response within the bounded event queue even if its HTTP
+        # consumer is not scheduled until generation finishes. Queue overflow
+        # and slow-client cancellation have separate lifecycle controls.
+        with running_server(Runner(), recipe, stream_interval=max(1, len(ids))) as (
+            _,
+            engine,
+            _,
+            errors,
+            base,
+            _,
+        ):
             with request(base, "/v1/" + api, {**body, "stream": stream}) as response:
                 result = collect_scores(
                     response, api=api, stream=stream, partial_tokens=partial_tokens

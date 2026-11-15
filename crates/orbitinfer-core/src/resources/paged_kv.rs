@@ -69,7 +69,13 @@ pub struct PrefixCacheMetrics {
 
 pub type PrefixStorageGroup = (u32, Vec<(u32, u32)>);
 pub type StorageOp = Box<dyn PrefixStorageOperation>;
+/// A storage job retained with its page loans until physical retirement.
 pub trait PrefixStorageOperation: fmt::Debug + Send + Sync {
+    /// Return a matched-prefix length for lookup, or success (one) / failure
+    /// (zero) for transfer. A terminal transfer result is a release receipt:
+    /// every access to borrowed backing must have ended, even on failure.
+    /// `None` retains the job and its loans, including after a failed fence.
+    /// `wait` permits blocking for the receipt; it never fabricates one.
     fn poll(&mut self, wait: bool) -> Option<u32>;
 }
 pub trait PrefixStorage: fmt::Debug + Send + Sync {
@@ -307,7 +313,7 @@ impl PagedKvResources {
                     && Some(read) != layout.retention().window_tokens()
                 {
                     let live_first =
-                        (key.len() as u32).saturating_sub(read.get()) / layout.block_tokens().get();
+                        (key.len() as u32).saturating_sub(read.get()) / layout.block_tokens();
                     let count = mask.len();
                     for logical in *first..live_first {
                         mask[logical as usize % count] = false;
@@ -469,7 +475,7 @@ impl PagedKvResources {
             // Wide leases may leave idle spare pages; owner growth never shrinks.
             let page_count = (group.active_blocks(context).1 as usize).max(table.pages().len());
             demands.push(GroupDemand::new(GroupId::new(index as u32), page_count));
-            let first = start / group.block_tokens().get();
+            let first = start / group.block_tokens();
             // A cyclic table is visited at most once, even for long prefills.
             let count = context
                 .div_ceil(group.block_tokens().get())
@@ -1077,7 +1083,7 @@ impl PagedKvResources {
                 }
 
                 for position in step.token_start()..post_length {
-                    let logical = position / group.block_tokens().get();
+                    let logical = position / group.block_tokens();
                     let page = page_for(group, table.pages(), logical).ok_or_else(|| {
                         Self::invalid(format!(
                             "request {} cache group {group_index} is missing logical block {logical}",
@@ -1090,7 +1096,7 @@ impl PagedKvResources {
                     append_offsets.push(if group.is_recurrent() {
                         0
                     } else {
-                        position % group.block_tokens().get()
+                        position % group.block_tokens()
                     });
                 }
             }

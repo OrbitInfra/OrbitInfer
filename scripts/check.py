@@ -38,6 +38,12 @@ def main():
     # All distributed CPU fixtures use local child processes, not a cluster.
     cpu_env = os.environ.copy()
     cpu_env["GLOO_SOCKET_IFNAME"] = "lo0" if sys.platform == "darwin" else "lo"
+    # The test group deliberately omits the GPU workspace packages. Subprocess
+    # controls still import their Python source, just as pytest's pythonpath does.
+    cpu_env["PYTHONPATH"] = os.pathsep.join(
+        [str(ROOT / "models" / backend) for backend in ("cuda", "torch", "mlx")]
+        + ([cpu_env["PYTHONPATH"]] if cpu_env.get("PYTHONPATH") else [])
+    )
     run(sys.executable, "-m", "pytest", "-q", "-ra", env=cpu_env)
     with tempfile.TemporaryDirectory(prefix="orbitinfer-installed-") as temporary:
         out = Path(temporary)
