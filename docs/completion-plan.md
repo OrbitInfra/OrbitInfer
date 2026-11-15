@@ -2,11 +2,12 @@
 
 ## Current focus
 
-The complete pinned source tree is imported under OrbitInfer names: all 616
-files, including CUDA, MLX/Metal and Torch model packages, tests, benchmarks,
-deployment tools and authoring skills. Local validation is recorded in the
-[import evidence](source-import.md). A complete source import does not establish
-GPU model correctness, performance or production readiness.
+OrbitInfer maintains its runtime, CUDA, MLX/Metal and Torch model packages,
+tests, benchmarks and deployment tools independently. Agent skills live in
+`.agents/skills/`; external updates are reviewed manually as needed. Attribution
+and the initial validation record remain in [source notes](source-import.md).
+Source availability does not establish GPU model correctness, performance or
+production readiness.
 
 Follow the [hierarchical external KV design](external-kv-design.md): one
 Engine/page allocator, one selected provider and separate outcome/retirement
@@ -31,7 +32,7 @@ SM100. Other imported runners are available for separate validation.
 
 | Phase | Scope | State |
 | --- | --- | --- |
-| Foundation | Complete runtime, all model packages, tooling, tests and provenance | Source imported; validation in source-import.md; clean CPU gate repairs included |
+| Foundation | Runtime, model packages, tooling, tests and attribution | Maintained independently; installed-wheel CPU check retained; no source-mirror manifest |
 | P0 | Final-reference/failed-completion lifetime audit, existing storage integration, real backing, identity and byte bounds | Implemented at source level; real backing, identity, byte and metadata bounds verified on CPU; installed CUDA gate unrun |
 | P1 | Full-checkpoint offline DeepSeek numerical comparison on SM100 | Unrun; hardware required |
 | P2 | CUDA graphs, overlap, persistent-state faults and cancellation | Source imported; installed profile unqualified |

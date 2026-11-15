@@ -46,8 +46,8 @@ Engine overlap; `4c38de5` changes control transport. Detailed graph statistics
 cost about 2.4 ms/step in a local diagnostic versus about 0.004 ms for aggregate
 counters; that is harness overhead, not faster model math.
 
-Read [recorded V4.1 measurements](../../../docs/benchmarks.md#recorded-v41-measurements)
-and [distributed contracts](../../../docs/distributed.md). First inspect repeated
+Read [recorded V4.1 measurements](../../../../docs/benchmarks.md#recorded-v41-measurements)
+and [distributed contracts](../../../../docs/distributed.md). First inspect repeated
 work and transport between graph bodies when device work is already close to a
 reference. Preserve exact catalog revalidation and readiness/commit agreement.
 
@@ -65,9 +65,9 @@ macOS host against `4775fd3`:
 
 These are CPU microbenchmarks, not measured decode improvements. Preserve ownership,
 invalidation, eviction and retirement checks while changing their complexity.
-Current anchors: [paged resources](../../../crates/orbitinfer-core/src/resources/paged.rs),
-[prefix resources](../../../crates/orbitinfer-core/src/resources/prefix.rs) and
-[scheduler](../../../docs/scheduler.md).
+Current anchors: [paged resources](../../../../crates/orbitinfer-core/src/resources/paged.rs),
+[prefix resources](../../../../crates/orbitinfer-core/src/resources/prefix.rs) and
+[scheduler](../../../../docs/scheduler.md).
 
 ## 3. Repeated preparation and object conversion accumulate
 
@@ -86,7 +86,7 @@ Avoid lists, per-token Python scalars, repeated hashing and copies at a boundary
 that already validated the data. Retain ownership until asynchronous copies and
 receives finish. `40a44fd` corrected reusable buffers that became inference tensors;
 `9ffe6f3` retains pinned storage through asynchronous copies. See
-[the runner boundary](../../../docs/kernel-boundary.md).
+[the runner boundary](../../../../docs/kernel-boundary.md).
 
 ## 4. Runtime geometry prevents first-use compilation stalls
 
@@ -100,7 +100,7 @@ compiled-kernel counts remained unchanged.
 The full-model EP8 128K prefill experiments measured 9.774 s with 1K chunks,
 4.009 s with 4K and 3.691 s with 8K. This combines execution/configuration changes;
 it is not an isolated speedup from disabling compilation. See
-[benchmark evidence](../../../docs/benchmarks.md#recorded-v41-measurements).
+[benchmark evidence](../../../../docs/benchmarks.md#recorded-v41-measurements).
 
 Older precedents: `31ae8d8` keeps only model-fixed trailing cuTile dimensions
 static; `76f8665` separates variable prefill from tiny decode convolution;
@@ -122,7 +122,7 @@ GEMM geometry. GPT-OSS's separate output-projection capture cost 24–30 µs ver
 operations. DeepSeek exact buckets avoid a demonstrated 17 → 32 row parity failure.
 
 These are region timings, not whole-model speedups. Read
-[graph policy](../../../docs/cuda-graphs.md), including serial shared-workspace use.
+[graph policy](../../../../docs/cuda-graphs.md), including serial shared-workspace use.
 Maintain graphability, report actual capture scope, and distinguish intentional
 prefill partial-chunk fallback from a missing capture. Do not loosen numerical
 checks simply to improve a replay counter.
@@ -147,7 +147,7 @@ does not validate packing, scale axes, strides or accumulation precision.
 Recent positive primitive cases (`41ad813`, `5bd97f0`, `d2a4fc3`) include GPT-OSS
 router 14.39 → 4.12 µs at eight rows and Inkling 4K convolution 496.74 → 122.11 µs.
 They remain primitive claims until a matched end-to-end run demonstrates impact.
-Read [primitive checks](../../../docs/benchmarks.md#cuda-model-primitive-checks).
+Read [primitive checks](../../../../docs/benchmarks.md#cuda-model-primitive-checks).
 
 ## 7. Overlap requires ownership and device feedback, not just an async API
 
@@ -174,8 +174,8 @@ read window plus one. `8335f67` adds speculative pre-anchor history. Recompute t
 complete read/write envelope when changing chunk size, draft width or capacity.
 Graph padding needs reserved scratch storage; masks alone did not prevent the
 unscheduled-row corruption fixed by `c79fa23`. See
-[the scheduler](../../../docs/scheduler.md) and
-[model correctness contract](../../../docs/model-forward-pass.md).
+[the scheduler](../../../../docs/scheduler.md) and
+[model correctness contract](../../../../docs/model-forward-pass.md).
 
 ## 8. Boundary tests expose bugs that ordinary generation misses
 
@@ -204,7 +204,7 @@ This does not establish equality to full prefill. Approximate consumer state sta
 out of prefix caching and prompt scoring takes the full path. Separate deterministic
 qualification compared compact/masked replay and prefix restoration, including
 unequal/idle cohorts; that does not turn the algorithm into exact full computation.
-See [the model's validation notes](../../../models/cuda/orbitinfer_models_cuda/deepseek_v41/README.md#validation).
+See [the model's validation notes](../../../../models/cuda/orbitinfer_models_cuda/deepseek_v41/README.md#validation).
 
 Inspect a reference's actual work before tuning toward its published curve.
 Larger chunks alone cannot reproduce this algorithm, and consumer-sized graph
@@ -226,7 +226,7 @@ cover actual head/channel/state geometry and collective order, not only flags.
 Historical GPT-OSS 120B H100 sweeps at `b2f7c3c` measured best tokens/s/GPU of
 574.750 for TP1, 488.915 TP2, 286.481 TP4, 988.479 EP2 and 1,013.632 EP4. These
 workload-specific curves argue for measuring the mesh; they are not a general
-ranking. See [recorded decode sweeps](../../../docs/benchmarks.md#recorded-decode-sweeps).
+ranking. See [recorded decode sweeps](../../../../docs/benchmarks.md#recorded-decode-sweeps).
 
 ## 11. Communication overlap and NUMA need controlled evidence
 
@@ -246,7 +246,7 @@ topology/configuration, not a complete causal diagnosis.
 
 Local evidence is under
 `artifacts/benchmarks/2026-10-24-deepseek-v41-b300-ep8-numa/`.
-The API commit `3f2893b` and [NUMA guide](../../../docs/numa.md) explain placement
+The API commit `3f2893b` and [NUMA guide](../../../../docs/numa.md) explain placement
 before child startup, container CPU masks/quotas and fallback reporting. Affinity
 does not reserve CPUs or migrate existing pages. Do not claim that API presence
 establishes a measured performance improvement.
@@ -269,7 +269,7 @@ was a candidate opportunity, not a completed speedup. Those sources used
 top-k-before-top-p (`580dde5`, `b2f7c3c`). The later fused sampler deliberately
 changed to top-p on the full scaled distribution followed by the top-k cap,
 retaining cutoff ties, and CDF sampling changed seeded stochastic choices.
-See the current [sampling contract](../../../docs/benchmarks.md#shared-sampler-checks)
+See the current [sampling contract](../../../../docs/benchmarks.md#shared-sampler-checks)
 before choosing an oracle; a faster upstream sampler with another contract is
 not a drop-in replacement.
 

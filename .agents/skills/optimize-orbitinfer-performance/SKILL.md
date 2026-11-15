@@ -28,10 +28,10 @@ Include CPU quota/affinity, NUMA placement and NCCL settings when investigating
 host or communication behavior. Prefer paired A/B on the same allocation; if the
 machine or environment changes, label the comparison accordingly.
 
-Use [`scripts/bench.py`](../../scripts/bench.py) and
-[`orbitinfer.bench`](../../orbitinfer/bench.py); extend shared tooling when necessary instead
+Use [`scripts/bench.py`](../../../scripts/bench.py) and
+[`orbitinfer.bench`](../../../orbitinfer/bench.py); extend shared tooling when necessary instead
 of adding a model-specific Modal diagnostic file. Consult `--help` and
-[the timing protocol](../../docs/benchmarks.md). For example, on an existing GPU
+[the timing protocol](../../../docs/benchmarks.md). For example, on an existing GPU
 host with `MODEL_KEY` and `CHECKPOINT` set:
 
 ```bash
@@ -128,7 +128,7 @@ instead of lists, scalar boxing and repeated validation. Send immutable request
 media/sampling once and typed mutable step data thereafter. A metadata cache needs
 explicit invalidation on changed inputs, layout or lifecycle. Keep Engine-owned
 allocation, leases and commit in the Engine; model-specific attention layout and
-replay policy belong in the runner. See [the boundary](../../docs/kernel-boundary.md).
+replay policy belong in the runner. See [the boundary](../../../docs/kernel-boundary.md).
 
 **Keep context and sampling out of JIT keys.** Logical history lengths, page-table
 widths, positions, temperature, top-k/top-p and seeds are runtime data. Audit
@@ -143,7 +143,7 @@ which rank compiled. If artifacts do not expose compilation reliably, instrument
 the compiler/cache-miss entry point or leave that claim unresolved. Warm repeat TTFT,
 mtime-only comparisons, and an exhaustive warmup grid do not establish this.
 Also verify numerical parity on unseen lengths; see
-[kernel caching](../../docs/kernel-cache.md).
+[kernel caching](../../../docs/kernel-cache.md).
 
 **Graph useful regions without changing the computation.** GPU kernel paths must
 be graphable, but the selected full/breakable policy determines actual capture
@@ -157,7 +157,7 @@ parity and padding cost across the supported buckets.
 Keep graph inputs/outputs at stable addresses, update mutable metadata, and consume
 or copy shared output views before replay overwrites them. Shared prefill-region
 buffers execute serially; overlapping streams cannot replay them concurrently.
-See [graph policy and ownership](../../docs/cuda-graphs.md).
+See [graph policy and ownership](../../../docs/cuda-graphs.md).
 
 **Separate matched-batch parity from cross-batch variation.** Compare target-only
 and speculative outputs with matched physical batch buckets, prompts, sampling,
@@ -178,7 +178,7 @@ across boundaries. Preserve collective participation, rank agreement on readines
 execution/commit failures, and quarantine after uncertain mutation. Stable decode
 may reduce transport work, not erase those agreements. Some persistent kernels
 need the whole GPU: obey measured stream dependencies instead of overlapping every
-NCCL operation. See [distributed execution](../../docs/distributed.md).
+NCCL operation. See [distributed execution](../../../docs/distributed.md).
 
 **Fuse with the real numerical contract.** Preserve accumulator precision, packed
 scale/weight strides, sentinel ordering, masks, recurrent state and rollback.
@@ -200,7 +200,7 @@ counters during timing; retain detailed diagnostics outside it. GPU event storag
 must survive until its corresponding completion, rather than being overwritten by
 the next replay. Metrics collection/scraping must not synchronize or introduce
 collectives. Enable capture-time instrumentation before capture and quantify its
-overhead when interpreting small differences. See [metrics](../../docs/metrics.md).
+overhead when interpreting small differences. See [metrics](../../../docs/metrics.md).
 
 ## Qualify the change and close the loop
 
@@ -221,7 +221,7 @@ Do not loosen tolerances to hide graph padding or parallel reduction drift.
 Approximate algorithms need an explicit quality comparison and must remain labeled
 as approximate; they cannot establish exact full-compute parity.
 
-For serving changes, use [`scripts/check_server.py`](../../scripts/check_server.py)
+For serving changes, use [`scripts/check_server.py`](../../../scripts/check_server.py)
 against the test endpoint for prefix reuse, varying-context TTFT, concurrent
 requests, media/reasoning where supported, stress/recovery and the relevant MMLU
 subset. The checker's prefix test verifies telemetry; separately compare

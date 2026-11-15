@@ -1,9 +1,6 @@
-"""Check complete source coverage, attribution and project namespaces."""
+"""Check first-party package boundaries and retained license notices."""
 
 import ast
-import hashlib
-import json
-import re
 import subprocess
 import tomllib
 from pathlib import Path
@@ -17,39 +14,15 @@ def require(condition, message):
 
 
 def main():
-    manifest = json.loads((ROOT / "third_party/upstream/import.json").read_text())
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    require(project["name"] == "orbitinfer", "unexpected core package name")
+    for pattern in project["license-files"]:
+        require(any(ROOT.glob(pattern)), f"missing packaged notice: {pattern}")
+    license_text = (ROOT / "LICENSE").read_bytes()
+    notice = (ROOT / "NOTICE").read_bytes()
     require(
-        manifest["revision"] == "a1989594d81921be3bffe43804eb0550b216ca64",
-        "unexpected source revision",
+        bool(license_text.strip()) and bool(notice.strip()), "empty license or notice"
     )
-    require(
-        not manifest["excluded_source_paths"],
-        "the full snapshot must not exclude files",
-    )
-    paths = [entry["path"] for entry in manifest["files"]]
-    require(
-        len(paths) == len(set(paths)) == 616, "incomplete or duplicate source inventory"
-    )
-    for entry in manifest["files"]:
-        require((ROOT / entry["path"]).is_file(), f"missing import: {entry['path']}")
-        require(
-            re.fullmatch("[0-9a-f]{64}", entry["source_sha256"]), "invalid source hash"
-        )
-    license_hash = hashlib.sha256((ROOT / "LICENSE").read_bytes()).digest()
-    require(
-        license_hash
-        == hashlib.sha256(
-            (ROOT / "third_party/upstream/LICENSE").read_bytes()
-        ).digest(),
-        "upstream license changed",
-    )
-    forbidden = {"resin", "resin_models_cuda", "resin_models_mlx", "resin_models_torch"}
-    allowed = {
-        "NOTICE",
-        "docs/source-import.md",
-        "scripts/check_source.py",
-        "scripts/check.py",
-    }
     names = (
         subprocess.check_output(
             ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
@@ -60,15 +33,8 @@ def main():
     )
     for name in sorted(set(names) - {""}):
         path = ROOT / name
-        if not path.is_file() or name.startswith("third_party/"):
+        if not path.is_file():
             continue
-        require("resin" not in name.lower(), f"old project path: {name}")
-        if name not in allowed and "LICENSE" not in path.name and path.name != "NOTICE":
-            try:
-                text = path.read_text()
-            except UnicodeDecodeError:
-                continue
-            require("resin" not in text.lower(), f"old project namespace in {name}")
         if path.suffix == ".py":
             for node in ast.walk(ast.parse(path.read_text(), filename=name)):
                 modules = []
@@ -77,10 +43,6 @@ def main():
                 elif isinstance(node, ast.ImportFrom) and node.module:
                     modules = [node.module]
                 for module in modules:
-                    require(
-                        module.split(".")[0] not in forbidden,
-                        f"upstream runtime import {module} in {name}",
-                    )
                     for backend in ("cuda", "mlx", "torch"):
                         prefix = f"orbitinfer_models_{backend}"
                         if module == prefix or module.startswith(prefix + "."):
@@ -94,17 +56,27 @@ def main():
     for path in (ROOT / "crates").glob("*/Cargo.toml"):
         config = tomllib.loads(path.read_text())
         require(
+            config["package"]["name"].startswith("orbitinfer-"),
+            f"unexpected crate name in {path}",
+        )
+        require(
             config["package"].get("publish") is False,
             f"publication is not disabled in {path}",
         )
     for backend in ("cuda", "mlx", "torch"):
+        package = ROOT / "models" / backend
+        config = tomllib.loads((package / "pyproject.toml").read_text())
+        require(
+            config["project"]["name"] == f"orbitinfer-models-{backend}",
+            f"unexpected {backend} package name",
+        )
+        require((package / "LICENSE").read_bytes() == license_text, "license changed")
+        require((package / "NOTICE").read_bytes() == notice, "package notice differs")
         require(
             (ROOT / "models" / backend / f"orbitinfer_models_{backend}").is_dir(),
             f"missing {backend} runner package",
         )
-    print(
-        f"Source boundary passed: all {len(paths)} files; no exclusions or old runtime namespaces; licenses retained."
-    )
+    print("Source boundary passed: package names, model modules and license notices.")
 
 
 if __name__ == "__main__":

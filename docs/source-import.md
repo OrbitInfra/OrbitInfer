@@ -1,59 +1,25 @@
-# Source import
+# Source and license notes
 
-OrbitInfer adapts the complete source snapshot of
-[Resin at a1989594](https://github.com/ekzhang/resin/tree/a1989594d81921be3bffe43804eb0550b216ca64),
-checked on 2026-11-14 and imported on 2026-11-15. The source archive SHA-256 is
-`92464bd55a1b7c5f49291742b4dbaa365a52e78c6c4ca8000c638f9d4191733d`.
-The [manifest](../third_party/upstream/import.json) maps all 616 upstream files
-to their local paths and records original and namespace-transformed hashes.
-There are no excluded source paths. The previous subset selected 342 files;
-the complete import restores the other 274 files and previously trimmed tests.
+OrbitInfer is maintained independently. The original source revision and
+third-party attribution are recorded in [NOTICE](../NOTICE); source and model
+packages retain their applicable licenses and notices. The original file
+inventory remains available in Git history and is not a maintenance contract.
 
-## Scope and naming
+Product namespaces and package imports use OrbitInfer. Renamed and adapted
+files retain their change notices. The core, CUDA, MLX/Metal and Torch packages
+remain separate; no external inference runtime is required at import time.
 
-All four Rust crates, the Python binding, all shared runtime helpers, CUDA,
-MLX/Metal and Torch model packages, tests, fixtures, docs, deployment scripts,
-benchmarks, workflows and authoring skills are present. No model weights or
-upstream Git history are included. The source snapshot, rather than a moving
-branch, defines this import.
+External changes are inspected manually when relevant. Record the exact
+revision and tests in the change review; there is no automatic synchronization.
+Review ownership, cache identity and resource bounds before adopting a change.
+Existing GPU benchmark tables from the initial source are historical reference
+measurements, not OrbitInfer qualification.
 
-Product names, Python imports, Rust crates, environment names, metrics,
-protocol fields, kernel symbols, cache paths and tool names use OrbitInfer.
-The native Python module is `orbitinfer._native`; there is no upstream runtime
-package or compatibility alias. Original project names remain only in legal
-notices, provenance records and checks which reject old namespaces.
+## Initial validation record (2026-11-15)
 
-Original licenses, copyright and NOTICE text are retained. Source and model
-packages include their applicable notices. Upstream benchmark numbers in
-imported guides are historical reference measurements, not OrbitInfer results.
-See the [historical audit](../third_party/upstream/source-audit.md) for the
-original NVIDIA-only evaluation; the full-source scope supersedes its exclusions.
-
-## Adaptations
-
-- Rename project identifiers consistently in Python, Rust, C++, CUDA, Metal,
-  build metadata, templates and fixtures; retain algorithms and ownership.
-- Keep the existing equivalent Clippy boolean simplifications, Rust formatting,
-  and removal of an obsolete PyO3 lint expectation for the pinned Rust toolchain.
-- Keep explicit Python initialization in the Rust NumPy-borrow control, and the
-  CPython-version-specific dataclass exception check. No assertion is removed.
-- Restore the complete upstream Python workspace and all model/test entrypoints.
-  Retain a CPU-only test dependency group for machines without native GPU SDKs.
-- Use pytest's importlib mode so CUDA and MLX tests with the same basename can
-  run together. The MLX ordering control explicitly skips when MLX is absent,
-  matching the other MLX controls; the Apple workflow requires Metal and cannot
-  silently accept missing MLX coverage.
-- Keep local development versions and `publish = false` for Rust crates. There
-  is no remote repository or package publication in this step.
-- Preserve the deterministic CPU example and isolated installed-wheel check.
-  CPU distributed controls select the local loopback interface.
-- Replace the upstream README's performance promotion with the current
-  qualification limits. Existing owner documentation remains in place.
-
-## Validation and limits
-
-Local host: macOS arm64, Python 3.12.6, Rust 1.96.0. All 616 original file
-hashes match the pinned archive and every mapped local file is present.
+At the initial import: macOS arm64, Python 3.12.6, Rust 1.96.0. The complete
+source snapshot and its original file hashes were verified at that time. This
+historical evidence does not require retaining a source mirror or manifest.
 
 | Check | Result |
 | --- | --- |
@@ -72,7 +38,6 @@ two Linux checks and 25 checks requiring uncached reference processors or
 checkpoints. No skip is counted as hardware evidence. The missing local Metal
 compiler component was installed to compile and execute the MLX controls.
 
-No complete GPU model has been run, no deployment tool has been executed
-against a cloud account, and no package has been published. Linux and remote CI
-are unrun. The [completion plan](completion-plan.md) separates this source
-import from installed model validation and future OrbitKV/OrbiTE integration.
+At that checkpoint, no complete GPU model or cloud deployment had run, no
+package had been published, and Linux/remote CI were unrun. Current status is
+in the [completion plan](completion-plan.md); this table is historical evidence.

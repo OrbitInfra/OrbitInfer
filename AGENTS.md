@@ -1,9 +1,10 @@
 # OrbitInfer agent guide
 
 Read docs/architecture.md and docs/completion-plan.md before making changes.
-This repository is an independent full-source adaptation of the snapshot in
-third_party/upstream/import.json. Product names, modules and tools use OrbitInfer.
-Preserve third-party copyright, licenses, notices and the source manifest.
+Product names, modules and tools use OrbitInfer. Preserve third-party copyright,
+licenses and notices; source attribution lives in NOTICE and package notices.
+External projects are reviewed manually as needed, with no vendored source
+manifest or automatic synchronization. Project skills live in .agents/skills/.
 
 ## Owners
 
@@ -37,8 +38,8 @@ Use the pinned Rust toolchain and Python 3.12 development environment. Run
 `uv run --no-sync python scripts/check.py`. On Apple Silicon, `uv sync --locked`
 also builds the MLX extension and installs all model workspace packages.
 The script runs formatting, Clippy, Rust tests, Python tests, the installed CPU
-example and source/package boundary controls. GPU skips are reported and never
-counted as hardware evidence. Write installed gates before claiming GPU support.
+runtime check and source/package boundary controls. GPU skips are reported and
+never counted as hardware evidence. Write installed gates before claiming GPU support.
 
 Keep changes with their owner. Record source-import adaptations separately
 from behavior changes. Tests should force lifecycle interleavings with events

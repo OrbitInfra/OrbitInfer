@@ -20,11 +20,11 @@ OrbitInfer also has optional HTTP serving and Prometheus metrics.
 > inference engine, please use SGLang or vLLM. Read on if you want to hack on
 > LLM inference systems, new models or hardware.
 
-The complete source import includes CUDA model runners, MLX/Metal runners,
+The repository includes CUDA model runners, MLX/Metal runners,
 Torch reference models, serving tools, benchmarks and tests. The first planned
 installed target is DeepSeek-V4.1-Flash on SM100. No complete GPU model profile
 has been qualified for OrbitInfer. See the [plan](docs/completion-plan.md) and
-[source import record](docs/source-import.md). Interface changes are recorded in
+[source and license notes](docs/source-import.md). Interface changes are recorded in
 the [change notes](docs/releases.md).
 
 ## Features
@@ -50,9 +50,9 @@ Start with the two-page [architecture overview](docs/architecture.md).
 Either fork the repository or import `orbitinfer` and `orbitinfer_models_cuda` as standalone
 packages. Then use the following skills:
 
-- [**add-orbitinfer-model**](skills/add-orbitinfer-model/SKILL.md) -
+- [**add-orbitinfer-model**](.agents/skills/add-orbitinfer-model/SKILL.md) -
   Create an inference engine for a new model from scratch, using OrbitInfer.
-- [**optimize-orbitinfer-performance**](skills/optimize-orbitinfer-performance/SKILL.md) -
+- [**optimize-orbitinfer-performance**](.agents/skills/optimize-orbitinfer-performance/SKILL.md) -
   Iterate on your inference engine to improve performance with an "autoresearch"
   workflow, diagnose bottlenecks and validate improvements, drawing on past
   learnings.
