@@ -5,10 +5,12 @@ from installed validation; see the [completion plan](completion-plan.md).
 
 ## OrbitInfer integration boundaries
 
-OrbitInfer owns inference scheduling and device-page leases. OrbitKV will own
-external cache identity and DRAM/SSD/peer retention policy; OrbiTE will own the
-byte transfers. Neither integration is implemented yet. They must extend the
-existing storage interfaces without adding a second scheduler or allocator.
+OrbitInfer owns inference scheduling and device-page leases. A selected external
+provider owns cache residency and tier policy. The first planned integration is
+OrbitKV, with OrbiTE owning its byte transfers; Mooncake Store and LMCache are
+alternative providers. These integrations are not implemented yet. The
+[hierarchical cache proposal](external-kv-design.md) extends the existing storage
+owners without adding a second scheduler or allocator.
 
 Cancellation and logical completion do not prove physical retirement. Before
 enabling an installed profile, prove that actual arena backing, Python owners
@@ -216,7 +218,7 @@ Perfetto traces.
 
 ## Current limits
 
-- no prefill/decode disaggregation;
+- no encoder/prefill/decode disaggregation or pipeline parallelism;
 - sparse graph-safe expert dispatch requires a shared NVLink domain and retains
   static receive storage; RDMA graph transport and communication overlap are pending;
 - model dimensions, quantization blocks, and kernel capabilities constrain layouts;

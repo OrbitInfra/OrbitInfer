@@ -6,6 +6,11 @@ a storage provider keeps immutable checkpoints outside the
 [device cache pool](cache-pool.md). OrbitInfer includes a bounded CPU DRAM provider, and
 custom providers can implement other storage tiers through the same interface.
 
+The [hierarchical external KV proposal](external-kv-design.md) specifies identity,
+retirement, byte budgets and the planned OrbitKV/Mooncake Store/LMCache adapters.
+It is a design for review. This guide describes the currently implemented API;
+none of those three adapters is available yet.
+
 ## Using the DRAM cache
 
 Construct a provider and pass it to an Engine with prefix caching enabled. Given a

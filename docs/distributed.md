@@ -1,5 +1,28 @@
 # Distributed execution
 
+## Deployment status
+
+The imported runtime contains attention TP/DP, context parallelism (CP), expert
+parallelism (EP) and expert TP. Their availability is runner-specific:
+
+| CUDA runner | Declared axes |
+| --- | --- |
+| DeepSeek-V4.1 | Attention DP, CP, EP, expert TP; no attention TP |
+| GPT-OSS | Attention TP/DP, CP, EP, expert TP |
+| Qwen and Gemma | Attention TP and dense FFN TP (the `expert_tp` axis) |
+
+Source and CPU topology/control tests do not establish an OrbitInfer multi-GPU
+deployment qualification. Historical upstream runs below remain upstream
+evidence; see OrbitInfer's [import validation](source-import.md) and
+[installed validation plan](completion-plan.md#installed-validation).
+
+Pipeline parallelism (PP), independent encoder/prefill/decode (E/P/D) services
+and multi-node serving are not implemented. EP is MoE expert parallelism, not
+E/P/D disaggregation. The next design work is the
+[external KV boundary](external-kv-design.md); it does not create those deployment modes.
+
+## Runtime boundaries
+
 `orbitinfer.Parallelism` defines rank placement in the Rust core and exposes that
 immutable configuration to Python. `orbitinfer.backend.topology.ParallelGroups` owns
 the Python process-group handles. `orbitinfer.backend.distributed` coordinates
