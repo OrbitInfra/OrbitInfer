@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Small, framework-independent worker groups with optional NUMA placement."""
 
 from __future__ import annotations
@@ -184,7 +184,9 @@ def spawn(
             if numa == "off":
                 placement = nullcontext()
             else:
-                placement = orbitinfer.numa.bind(device=device, strict=numa == "required")
+                placement = orbitinfer.numa.bind(
+                    device=device, strict=numa == "required"
+                )
             with placement as binding:
                 context.placements.append(binding)
                 process.start()

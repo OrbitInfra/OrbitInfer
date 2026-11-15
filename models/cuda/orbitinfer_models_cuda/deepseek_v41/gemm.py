@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """FlashInfer's prepared FP4 routed-expert kernel for DeepSeek V4.1."""
 
 from __future__ import annotations
@@ -112,7 +112,8 @@ def prepare_fp4_fused_moe_weights(
 
     tensors = (w13, w13_scales, w2, w2_scales)
     if all(
-        getattr(tensor, "_orbitinfer_flashinfer_moe_layout", False) for tensor in tensors
+        getattr(tensor, "_orbitinfer_flashinfer_moe_layout", False)
+        for tensor in tensors
     ):
         return
     if w13.ndim != 3 or w2.ndim != 3 or w13.shape[0] != w2.shape[0]:

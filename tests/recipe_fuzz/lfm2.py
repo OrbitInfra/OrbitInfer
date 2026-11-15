@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Python's literal AST is the oracle for LFM2's safe function-call grammar."""
 
 from __future__ import annotations

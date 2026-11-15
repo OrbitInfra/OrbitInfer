@@ -1,7 +1,3 @@
-> Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
-
-> Imported from Resin at `a1989594d81921be3bffe43804eb0550b216ca64`. Upstream hardware results below do not qualify OrbitInfer.
-
 Pinned Hugging Face chat templates are development-only differential oracles.
 Production code neither loads nor interprets these templates.
 

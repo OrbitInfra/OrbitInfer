@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Image reuse preserves per-request placement and immutable buffer ownership."""
 
 from __future__ import annotations
@@ -141,7 +141,9 @@ def assert_same_preparation(actual, expected):
     np.testing.assert_array_equal(actual.token_ids, expected.token_ids)
     assert actual.media is not None and expected.media is not None
     actual_meta, actual_buffers = orbitinfer._native._media_to_buffers(actual.media)
-    expected_meta, expected_buffers = orbitinfer._native._media_to_buffers(expected.media)
+    expected_meta, expected_buffers = orbitinfer._native._media_to_buffers(
+        expected.media
+    )
     assert actual_meta == expected_meta
     assert_readonly_buffers(actual_buffers)
     assert_readonly_buffers(expected_buffers)

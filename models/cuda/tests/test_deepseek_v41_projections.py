@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Prepared projection layouts and fusion against independent dense arithmetic."""
 
 import sys
@@ -151,7 +151,9 @@ def test_prequantized_projection_preserves_scales_and_restores_leading_shape(
     def no_cast(_value):
         raise AssertionError("prequantized projection must not cast a second time")
 
-    monkeypatch.setattr("orbitinfer_models_cuda.deepseek_v41.linear.quantize_fp8", no_cast)
+    monkeypatch.setattr(
+        "orbitinfer_models_cuda.deepseek_v41.linear.quantize_fp8", no_cast
+    )
     result = prepared((values.reshape(2, 3, 32), scales))
     assert result.shape == (2, 3, 17)
     assert calls[0][0][0].shape == (6, 32)

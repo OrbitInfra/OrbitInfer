@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Retained checkpoint storage and FlashInfer expert ABI for DeepSeek V4.1."""
 
 import sys

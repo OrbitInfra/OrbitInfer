@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 //! Stateful contracts for aborting preparation before a runner accepts work.
 use orbitinfer_core::Phase;
 use orbitinfer_core::engine::{

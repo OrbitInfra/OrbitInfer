@@ -1,96 +1,227 @@
 # Architecture
 
-OrbitInfer is an NVIDIA inference runtime derived from a pinned Resin source
-snapshot. The architecture below is the initial project contract. It does not
-claim production readiness or verified GPU behavior.
+This describes the complete imported runtime. Source availability is separate
+from installed validation; see the [completion plan](completion-plan.md).
 
-## Owners and extension points
+## OrbitInfer integration boundaries
 
-```mermaid
-flowchart TD
-    Front[Python or HTTP frontend] --> Core[orbitinfer-core EngineCore]
-    Core -->|immutable plan and page lease| Runner[NVIDIA model runner]
-    Runner -->|validated result and completion| Core
-    Core --> Storage[PrefixStorage / CacheStorage]
-    Storage --> Dram[Retained bounded DRAM reference provider]
-    Storage -. planned .-> KV[OrbitKV native client and Manager]
-    KV -. payload and physical retirement .-> TE[OrbiTE]
-```
+OrbitInfer owns inference scheduling and device-page leases. OrbitKV will own
+external cache identity and DRAM/SSD/peer retention policy; OrbiTE will own the
+byte transfers. Neither integration is implemented yet. They must extend the
+existing storage interfaces without adding a second scheduler or allocator.
 
-`EngineCore` owns requests, priority, batching, token progress, logical cache
-allocation and reader/writer leases. A runner binds its actual arena once,
-receives immutable token/page metadata, and executes model-specific math. Its
-completion must retain output and device feedback independently of graph buffers
-that the next step can reuse. The binding drives the same core; it is not a
-second coordinator.
+Cancellation and logical completion do not prove physical retirement. Before
+enabling an installed profile, prove that actual arena backing, Python owners
+and registrations survive failed device completion and final-reference drop.
+The imported quarantine controls alone do not establish that proof.
 
-`CacheLayout` declares full-history, window and checkpoint retention. A model
-must export every byte required to resume a declared checkpoint. The external
-provider owns immutable copies outside the device cache and its own budgets.
-Model/weight/layout identities must isolate incompatible objects; token prefixes
-alone do not establish compatibility.
+## Runtime owners
 
-Python `CacheStorage` uses `lookup`, `store`, and `load`. A terminal successful
-or failed transfer means all borrowed-buffer accesses have ended. Unknown
-completion retains the borrowed pages. The native `PrefixStorage` contract is
-the Rust integration point; no OrbitKV implementation is claimed yet.
+OrbitInfer separates request and resource ownership from model-specific execution.
+The Python-independent `orbitinfer-core` crate contains the complete transactional
+`EngineCore<P>` lifecycle. `P` is opaque frontend metadata: native code schedules
+tokens without knowing about Python sampling objects or model media. Payloads
+are cloned once per dispatched row; native applications should use `Arc` for
+large shared data.
 
-| Contract | Source owner | Extension rule |
-| --- | --- | --- |
-| Scheduling and prepare/commit | `crates/orbitinfer-core/src/engine.rs` | Keep one core and one transaction per execution domain. |
-| Logical pages and external storage | `crates/orbitinfer-core/src/resources/paged_kv.rs` | Implement `PrefixStorage`; retain page and backing loans for pending operations. |
-| Runner and completion | `orbitinfer/protocols.py` | Implement `Runner` or `EnqueuingRunner`; accepted asynchronous work needs an owned completion. |
-| Python cache provider | `orbitinfer/cache_storage.py` | Implement lookup/load/store with terminal results proving retirement. |
-| CUDA arena, stream and graph helpers | `orbitinfer/backend/cuda/` | Reuse the runner's actual memory and completion owners. |
-| First model | `models/cuda/orbitinfer_models_cuda/deepseek_v41/` | Bind the declared layout and execute the core's plan; do not schedule a second batch. |
+`orbitinfer-py` converts Python inputs, binds the runner once, and adapts native plans,
+errors, handles, and events. The core uses `rkyv` for the
+distributed plan wire format. Native applications can use `orbitinfer-core` without
+Python, Torch, or HTTP.
 
-## Initial implementation
+Shared OrbitInfer also owns native conversation rendering, incremental parsing and
+CPU media preparation in `orbitinfer-recipe`, plus serving protocols and streaming
+in `orbitinfer-http`. These components sit above the token-based Engine; they are
+part of the library, while GPU vision encoding remains in model runners.
 
-The source import keeps the Rust engine, HTTP and recipe crates, Python binding,
-shared CUDA helpers and DeepSeek runner. HTTP and recipe are existing binding
-dependencies; preserving them avoids a behavior-changing extraction during the
-initial import. Their generic formats are not declarations that all model
-runners are supported. Only the DeepSeek CUDA model implementation is imported.
+The Rust Engine owns:
 
-The Python package is `orbitinfer`, its extension is `orbitinfer._native`, and
-the model package is `orbitinfer_models_cuda`. There are no `resin` aliases.
-The source is local, not a runtime dependency on an installed Resin package.
+- request admission, priority, batching, and prefill chunking;
+- request progress and completion;
+- one unified paged cache allocator;
+- full-history, sliding-window, and recurrent-state retention;
+- exact-token LRU prefix reuse;
+- cache reader/writer leases across runner execution and commit;
+- retry or quarantine decisions after runner failures.
 
-Keep one runner and one resource layout per engine. Start with source-level
-interfaces and construction-time selection. Dynamic binary plugins, hot unload,
-multi-model batching and a second resource manager are not part of this step.
+The Python runner owns:
 
-## Cache and transfer boundary
+- model weights and device allocations;
+- conversion of `BatchPlan` page indices into kernel metadata;
+- attention, recurrent, collective, sampling, and speculative-decode kernels;
+- CUDA graphs and execution synchronization.
 
-OrbitInfer owns inference scheduling and HBM page leases. OrbitKV owns semantic
-cache identity, DRAM/SSD/peer replicas and their policy. OrbiTE owns actual local,
-file and peer transfers. A future adapter must retain allocator-issued page
-ownership and actual GPU backing across Restore and Publish. It must not invent
-a local generation counter as a substitute for an allocator receipt.
+The boundary is intentionally asymmetric: scheduling complexity belongs in the
+Engine, while a forward pass receives immutable token and page metadata and can
+execute straightforwardly.
 
-Ready, logically complete and physically retired are separate states. Event
-publication permits the declared stream dependency; it does not release backing.
-Cancel, timeout, manager death and Python GC do not prove device quiescence.
-Persistent model state changed before a failure cannot safely be replayed even
-if a later synchronization establishes device quiescence.
+Separately installable model packages already use this boundary to add models
+and select kernels. The [model authoring reference](model-forward-pass.md)
+documents preparation and execution requirements. The
+[add-orbitinfer-model skill](../skills/add-orbitinfer-model/SKILL.md) provides the workflow
+for implementing and validating a runner.
 
-The imported core contains quarantine and lease controls. The final-reference
-path after failed CUDA synchronization remains a specific integration audit:
-verify that arena backing, Python owners and native registrations survive, not
-just a logical page record. Do not enable an installed profile until this passes.
+## Lifecycle
 
-## Model scope
+1. The runner publishes a frozen `RunnerConfig`.
+2. The Engine creates the declared `CacheLayout` and calls
+   `bind_resources(ResourceBinding)` once.
+3. `submit()` records tokens, generation limits, priority, batch key, and
+   sampling policy. With prefix caching enabled, it attaches the longest aligned
+   cached prefix.
+4. The scheduler selects a phase- and key-compatible cohort, respecting token
+   and cache capacity.
+5. The cache coordinator grows each request, creates ordered group page tables,
+   and acquires one batch lease.
+6. The Engine emits a `BatchPlan` and either calls `forward()` or enqueues an
+   owned device completion while retaining the exact requests and page lease.
+7. The Engine validates the complete raw result against the leased write span
+   before applying stop tokens or generation limits. It prepares events, releases
+   terminal model state, publishes aligned prefixes, retires cache leases, and
+   commits progress before requeuing survivors.
 
-DeepSeek-V4.1-Flash is the initial NVIDIA implementation. Use full execution
-(`swa_replay_mode="off"`, no speculative drafts, overlap disabled) for the first
-numerical baseline. Approximate SWA replay, graphs, overlap and speculative
-decoding are enabled only with separate comparisons. The inherited constructor
-defaults remain unchanged in this source import; the installed baseline must
-pass those conservative options explicitly.
+Internally, preparation owns the selected requests and cache capabilities until
+completion or rollback. `step()` drives submission and completion; there is no
+public API that commits arbitrary page IDs. Rust runners implement
+`engine::Runner<P>` and receive an owned `ExecutionPlan<P>`. The native
+[conformance tests](../crates/orbitinfer-core/tests/engine.rs) demonstrate this API
+without a Python interpreter. Native applications bind their arena to the core's
+cache pool and use the same logical runner throughout its lifetime. They call
+`close(&mut runner)` for orderly shutdown; the core does not own the device
+runtime or call back into a runner when it is dropped.
 
-Qwen, Kimi and GLM require separate runner, state-export and numerical acceptance.
-Ascend, ROCm and MLX/Metal execution are excluded. CPU is used for control-plane
-tests and fixtures, not as a production model backend. Collectives stay with the
-runner and its NVIDIA libraries; they do not move into OrbiTE.
+Multiple requests within a batch execute together. With device overlap, an
+initial `step()` can return no events while its batch runs; subsequent steps
+submit a continuation before harvesting the previous batch.
 
-The detailed source findings and phased work are in [the design](architecture-plan.md).
+### Engine overlap
+
+`Engine(enable_overlap=True)` is the default. An optional runner `enqueue()`
+returns an owned completion with `result()` and device `feedback`; the
+synchronous runner contract remains sufficient. DeepSeek's CUDA runner is one
+implementation of this boundary. Model forward methods receive ordinary device
+inputs and cache views; they do not track pending batches or schedule continuations.
+
+The Engine keeps one batch in flight. Exact accepted tokens, positions and
+sampling offsets feed the next graph on the GPU; CPU progress and events commit
+from the completed output. A single writer lease transfers between safe decode
+continuations. Arrivals, cancellation, close and page boundaries drain before
+changing ownership. Failures after enqueue retain owners in quarantine.
+
+The fast path requires a stable decode cohort, sufficient remaining budget, and
+both write spans inside the same owned blocks in every cache group. Stop tokens,
+including EOS, can finish a request while its successor step is in flight: its
+result is published immediately, but its row
+and cache lease remain alive until that step completes. Successor outputs for
+finished rows are discarded. Other steps use the synchronous path.
+`enable_overlap=False` or `step(allow_overlap=False)` selects the reference path.
+Distributed replicas vote together before enqueue or drain.
+
+The shared CUDA completion supports generated-token logprobs and top
+alternatives during overlap. Scores are computed from raw target logits and
+copied into completion-owned host buffers before another graph replay can reuse
+the logits. Collecting a completion packs only accepted output positions.
+Token-only decoding skips score computation and score transfers.
+
+## Cache geometry
+
+Every group uses equal-sized physical slabs. `blocks_per_slab` lets smaller
+states share one slab, while the allocator remains free to assign each slab
+to whichever group needs it. There is no fixed VRAM percentage for recurrent
+state versus attention history.
+
+`CacheGroupFamily.HISTORY` covers full and sliding token history.
+`CacheGroupFamily.STATE` keeps one private live state per sequence and separate
+optional immutable prefix snapshots in the same pool. A Window group declares
+both physical `window_tokens` and logical `read_window_tokens`. A step may write at most
+`window_tokens - read_window_tokens + 1` tokens so its earliest query can still
+read the preceding window. The Engine caps prefill and checks speculative
+lookahead against this bound. See [unified paged cache](cache-pool.md).
+
+CUDA runners normally determine slab capacity after loading weights and before
+cache allocation and graph capture. They reserve the configured model/static
+memory fraction and workspace budget, measure remaining VRAM, divide by bytes
+per slab, and construct the final layout.
+
+## Prefix reuse
+
+The prefix cache stores immutable page snapshots in an exact-token block trie.
+Its checkpoint alignment is the least common multiple of every group block size,
+so a hit restores attention, sliding-window, and recurrent state at the same
+token boundary. Cached pages consume the same fungible pool and are evicted LRU
+when live allocation needs capacity. Successive History snapshots share immutable
+page-table segments instead of copying every ancestor's references. Window and
+State snapshots remain bounded. Each request owns a private live STATE slot;
+immutable prefix snapshots use separate slots in the same pool. A prefix hit
+copies its snapshot into the new live slot once. Only an exactly materialized
+accepted prefix can become a snapshot; a verification step that crosses an
+alignment without producing that intermediate state skips the checkpoint.
+Snapshot allocation is optional and cannot block decode. Trie nodes carry direct
+LRU links, so eviction does not scan all cached entries.
+
+## Speculative decoding
+
+The generic Engine schedules one decode anchor per sequence. A runner such as
+DeepSeek-V4.1 may draft and verify several tokens, then return the accepted token
+row. The runner option `speculative_draft_tokens` defaults to zero and sets
+`RunnerConfig.max_accepted_per_step` to the draft count plus one. This output
+bound includes the correction or bonus token. Model-specific shifted writes are
+declared by `CacheLayout.decode_write_extra_tokens`; the Engine leases both
+without treating physical writes as output progress. DSpark state updates and
+target verification remain inside the model runner and its fused kernels.
+
+## Failure boundary
+
+A rejected execution must have no persistent effects, or must have rolled them
+back. It restores the exact selected cohort and permits a retry with a new batch
+ID. After execution may have changed state, failure poisons the Engine and
+quarantines its resources. Successful device synchronization cannot undo an
+in-place recurrent update. Native callbacks that panic also take this failure
+path. See the [runner contract](kernel-boundary.md) for Python error handling.
+
+## Distributed coordination and output
+
+The [distributed execution layer](distributed.md) coordinates explicit attention
+TP/CP/DP and expert EP/TP meshes, one request Engine per attention-DP replica,
+and phase agreement across communicating replicas. It leaves model partitioning
+and kernel collectives in prepared runtimes. GPT-OSS prepares attention head shards
+separately from expert ownership and intermediate shards. DeepSeek-V4.1 keeps
+its single MLA KV head whole and composes attention DP/CP with expert EP/TP.
+Shared expert dispatch returns complete origin rows across EP and expert TP;
+models do not reduce that result again across attention TP. Sampling uses the
+full device request-replica group.
+
+Their CP prefill boundaries differ: GPT-OSS partitions hidden/FFN token rows and
+gathers K/V, while DeepSeek partitions attention query work around replicated
+MLA compressor updates and full FFNs. Both replicate attention during decode
+and retain complete KV/state copies across CP ranks. CP does not multiply
+logical cache capacity. Shared CUDA graph machinery captures FFN regions and
+decode, coordinates buckets and empty ranks, and explicitly releases captured
+collectives before process-group shutdown.
+
+[Generated-token logprobs](logprobs.md) cross the Python-to-Rust boundary as
+borrowed NumPy columns.
+
+## Observability
+
+`Engine(enable_metrics=True)` enables native request timing, committed token
+counters, scheduler state, and cache inventory. Optional runner hooks supply device pass
+durations, graph decisions, speculative counters, and distributed wait time.
+They leave `forward`, `enqueue`, and `ForwardOutput` unchanged. Collection never
+synchronizes the accelerator; the HTTP server publishes periodic snapshots at
+`/metrics`, and scrapes read the last published buffer without entering inference.
+See [metrics](metrics.md) for ownership, timing definitions, Prometheus queries,
+and OTLP forwarding. [Benchmark harnesses](benchmarks.md) also record timings and
+Perfetto traces.
+
+## Current limits
+
+- no prefill/decode disaggregation;
+- sparse graph-safe expert dispatch requires a shared NVLink domain and retains
+  static receive storage; RDMA graph transport and communication overlap are pending;
+- model dimensions, quantization blocks, and kernel capabilities constrain layouts;
+- transport and model backend restrictions further constrain valid meshes; see
+  [distributed execution](distributed.md) and the selected runner's validation;
+- no multi-node serving;
+- model runtimes implement device collectives; the native scheduler owns local
+  request and page lifetimes.

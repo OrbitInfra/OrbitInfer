@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 //! Model inputs owned by Rust, exposed as NumPy buffers without copying into Torch.
 
 use numpy::{

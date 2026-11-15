@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Real spawned workers preserve rank arguments, failures, and group cleanup."""
 
 from __future__ import annotations
@@ -83,14 +83,18 @@ def test_worker_exception_stops_and_reaps_peers(tmp_path: Path) -> None:
 
 
 def test_nonzero_exit_is_reported() -> None:
-    with pytest.raises(orbitinfer.process.ProcessError, match="rank 0.*code 7") as raised:
+    with pytest.raises(
+        orbitinfer.process.ProcessError, match="rank 0.*code 7"
+    ) as raised:
         orbitinfer.process.spawn(_exit, devices=["cpu"], numa="off")
     assert raised.value.worker_traceback == ""
 
 
 @pytest.mark.parametrize("code", [None, 0])
 def test_successful_system_exit_is_preserved(code: int | None) -> None:
-    context = orbitinfer.process.spawn(_system_exit, (code,), devices=["cpu"], numa="off")
+    context = orbitinfer.process.spawn(
+        _system_exit, (code,), devices=["cpu"], numa="off"
+    )
     assert context.processes[0].exitcode == 0
 
 
@@ -151,7 +155,9 @@ def test_partial_start_failure_reaps_started_worker(monkeypatch) -> None:
                 monkeypatch.setattr(process, "start", fail_start)
             return process
 
-    monkeypatch.setattr(orbitinfer.process.mp, "get_context", lambda method: BrokenContext())
+    monkeypatch.setattr(
+        orbitinfer.process.mp, "get_context", lambda method: BrokenContext()
+    )
     with pytest.raises(RuntimeError, match="start failed"):
         orbitinfer.process.spawn(_sleep, devices=["cpu", "cpu"], numa="off", join=False)
     assert created[0].exitcode is not None

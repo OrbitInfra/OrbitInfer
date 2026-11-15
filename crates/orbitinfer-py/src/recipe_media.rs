@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 //! Typed media expansions and token placement, independent of model preprocessing.
 
 use std::collections::HashMap;

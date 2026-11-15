@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Optional parity checks with real pinned processors already in the HF cache.
 
 No model weights or network access are needed. Missing cached processors skip;
@@ -180,7 +180,11 @@ def test_literal_media_marker_does_not_acquire_a_pixel_slot(model_processor):
     _, processor, recipe = model_processor
     text = f"The literal spelling {processor.image_token} is ordinary text."
     plain = recipe.render(
-        [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text(text)])]
+        [
+            orbitinfer.recipe.Message(
+                orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text(text)]
+            )
+        ]
     )
     assert processor.image_token_id not in plain.token_ids
     pixels = processor.image_processor(

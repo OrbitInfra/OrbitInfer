@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """DeepInfer's paged FP4 MQA and CED selection on Engine-owned pages.
 
 The kernel calls and candidate scheduling follow DeepInfer 774ce244's

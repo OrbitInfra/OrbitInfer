@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 # Adapted from DeepInfer 774ce244b87cc0eb8d4b94ab9f5de2ab22049f01.
 # SPDX-License-Identifier: Apache-2.0
 # Source: https://github.com/deepseek-ai/DeepInfer/blob/774ce244b87cc0eb8d4b94ab9f5de2ab22049f01/

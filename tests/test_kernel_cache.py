@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 from __future__ import annotations
 
 import errno
@@ -215,7 +215,9 @@ class TestArtifactCache:
         def unexpected_copy(*_args, **_kwargs):
             raise AssertionError("same-path publication must not copy")
 
-        monkeypatch.setattr("orbitinfer.kernel_cache._atomic_copy_artifact", unexpected_copy)
+        monkeypatch.setattr(
+            "orbitinfer.kernel_cache._atomic_copy_artifact", unexpected_copy
+        )
         cache.publish_from(artifact, artifact, identity="kernel")
         assert cache.validate(artifact, identity="kernel")
 

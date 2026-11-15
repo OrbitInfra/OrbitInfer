@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """GLM's native binding, pinned template, and streaming behavior."""
 
 import json
@@ -65,7 +65,8 @@ def template():
 def test_pinned_fixture_is_reproducible_from_original_template(template):
     fixtures = json.loads(
         (
-            Path(__file__).parents[1] / "crates/orbitinfer-recipe/tests/fixtures/glm_hf.json"
+            Path(__file__).parents[1]
+            / "crates/orbitinfer-recipe/tests/fixtures/glm_hf.json"
         ).read_text()
     )
     for case in fixtures["cases"]:

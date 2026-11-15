@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Opaque native HTTP packets over driver-group Gloo byte collectives."""
 
 from __future__ import annotations

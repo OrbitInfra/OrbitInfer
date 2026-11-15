@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Stream batching changes delivery cadence, preserving parsing and score identity."""
 
 from __future__ import annotations

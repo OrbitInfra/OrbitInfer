@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 //! Python adapters for the pure Rust cache descriptors in `orbitinfer-core`.
 
 use std::num::NonZeroU32;

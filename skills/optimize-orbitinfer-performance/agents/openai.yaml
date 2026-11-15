@@ -1,0 +1,4 @@
+interface:
+  display_name: "Optimize OrbitInfer Performance"
+  short_description: "Trace and remove measured OrbitInfer inference bottlenecks"
+  default_prompt: "Use $optimize-orbitinfer-performance to find and remove the bottlenecks in this OrbitInfer workload, preserving correctness and reporting measured curves and traces."

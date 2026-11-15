@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Image recipe equivalence, cache identity and scheduler-neutral ownership."""
 
 import base64
@@ -218,7 +218,9 @@ def test_engine_slices_causal_image_spans_across_prefill_chunks(recipe):
             orbitinfer.recipe.Message(
                 orbitinfer.recipe.Role.USER,
                 [
-                    orbitinfer.recipe.Image(source=np.zeros((2, 4, 3), dtype=np.float32)),
+                    orbitinfer.recipe.Image(
+                        source=np.zeros((2, 4, 3), dtype=np.float32)
+                    ),
                     orbitinfer.recipe.Text("describe"),
                 ],
             )

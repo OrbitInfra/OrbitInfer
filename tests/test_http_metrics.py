@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Published native metrics remain readable independently of inference progress."""
 
 from __future__ import annotations
@@ -22,7 +22,9 @@ def scrape(base):
 
 
 def sample(text, name):
-    lines = [line for line in text.splitlines() if line.startswith(f"orbitinfer:{name}{{")]
+    lines = [
+        line for line in text.splitlines() if line.startswith(f"orbitinfer:{name}{{")
+    ]
     assert len(lines) == 1, f"expected one {name} series, got {lines}"
     return float(lines[0].rsplit(" ", 1)[1])
 

@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 //! Shared request lifecycle for local serving and routed attention-DP drivers.
 use crate::http_distributed::{HttpEvents, HttpIngress};
 use crate::http_logprobs::Vocabulary;

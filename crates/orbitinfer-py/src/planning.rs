@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 //! Conversion only: request planning and validation live in orbitinfer-core.
 use crate::{BatchPhase, BatchPlan, RequestPayload, cache::CacheGroupPlan};
 use orbitinfer_core::{Phase, engine::ExecutionPlan};

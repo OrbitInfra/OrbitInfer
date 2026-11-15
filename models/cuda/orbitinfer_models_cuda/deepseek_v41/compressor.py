@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """DeepInfer's C1/C2 compressor on Engine-owned physical state pages."""
 
 from types import SimpleNamespace

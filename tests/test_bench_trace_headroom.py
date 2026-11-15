@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Trace the actual Engine continuation path, including worst-case acceptance."""
 
 from types import SimpleNamespace

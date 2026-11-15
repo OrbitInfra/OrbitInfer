@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 from __future__ import annotations
 
 import ctypes
@@ -47,7 +47,9 @@ def host(tmp_path, monkeypatch):
     monkeypatch.setattr(
         orbitinfer._native, "_numa_get_policy", lambda: state["policy"], raising=False
     )
-    monkeypatch.setattr(orbitinfer._native, "_numa_set_policy", set_policy, raising=False)
+    monkeypatch.setattr(
+        orbitinfer._native, "_numa_set_policy", set_policy, raising=False
+    )
     return state
 
 

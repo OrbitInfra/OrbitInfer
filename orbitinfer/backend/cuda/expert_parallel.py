@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """GPU-driven owner-sparse MoE transport using FlashInfer's NVLink workspace."""
 
 from __future__ import annotations

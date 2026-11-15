@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Ownership and state boundaries of the native conversation interface."""
 
 from __future__ import annotations
@@ -65,7 +65,11 @@ def test_native_prompt_is_owned_bound_to_one_recipe_and_parsers_are_fresh():
     first = get_native_recipe("gpt_oss", backend)
     second = get_native_recipe("gpt_oss", backend)
     prompt = first.render(
-        [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")])]
+        [
+            orbitinfer.recipe.Message(
+                orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+            )
+        ]
     )
     original = prompt.token_ids
     assert np.shares_memory(prompt.token_ids, original)
@@ -165,7 +169,8 @@ def test_native_media_accounts_for_each_source():
         native.render(
             [
                 orbitinfer.recipe.Message(
-                    orbitinfer.recipe.Role.USER, [valid, orbitinfer.recipe.Image(source=object())]
+                    orbitinfer.recipe.Role.USER,
+                    [valid, orbitinfer.recipe.Image(source=object())],
                 )
             ]
         )
@@ -188,29 +193,40 @@ def test_public_order_and_per_message_controls_are_not_silently_dropped():
         native.debug_render_text(
             [
                 orbitinfer.recipe.Message(
-                    orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")], task="action"
+                    orbitinfer.recipe.Role.USER,
+                    [orbitinfer.recipe.Text("hi")],
+                    task="action",
                 )
             ]
         )
     with pytest.raises(ValueError, match="initial"):
         native.debug_render_text(
             [
-                orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]),
                 orbitinfer.recipe.Message(
-                    orbitinfer.recipe.Role.SYSTEM, [], tools=[orbitinfer.recipe.Tool("f")]
+                    orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+                ),
+                orbitinfer.recipe.Message(
+                    orbitinfer.recipe.Role.SYSTEM,
+                    [],
+                    tools=[orbitinfer.recipe.Tool("f")],
                 ),
             ]
         )
     with pytest.raises(ValueError, match="does not support rendering option"):
         native.debug_render_text(
-            [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")])],
+            [
+                orbitinfer.recipe.Message(
+                    orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+                )
+            ],
             options=orbitinfer.recipe.RenderOptions(add_vision_id=True),
         )
     with pytest.raises(ValueError, match="latest_reminder"):
         native.debug_render_text(
             [
                 orbitinfer.recipe.Message(
-                    orbitinfer.recipe.Role.LATEST_REMINDER, [orbitinfer.recipe.Text("Remember")]
+                    orbitinfer.recipe.Role.LATEST_REMINDER,
+                    [orbitinfer.recipe.Text("Remember")],
                 )
             ]
         )
@@ -225,7 +241,9 @@ def test_raw_tool_arguments_survive_without_json_reserialization():
     raw = '{ "n": 1.00, "nested": [true, null] }'
     text = native.debug_render_text(
         [
-            orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("run")]),
+            orbitinfer.recipe.Message(
+                orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("run")]
+            ),
             orbitinfer.recipe.Message(
                 orbitinfer.recipe.Role.ASSISTANT, [orbitinfer.recipe.ToolCall("f", raw)]
             ),
@@ -253,7 +271,9 @@ def test_native_http_lowering_matches_public_typed_messages():
     )
     native = get_native_recipe("gemma4", backend)
     messages = [
-        orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("Go")]),
+        orbitinfer.recipe.Message(
+            orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("Go")]
+        ),
         orbitinfer.recipe.Message(
             orbitinfer.recipe.Role.ASSISTANT,
             [
@@ -263,7 +283,9 @@ def test_native_http_lowering_matches_public_typed_messages():
                 orbitinfer.recipe.Text("Here"),
             ],
         ),
-        orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("Next")]),
+        orbitinfer.recipe.Message(
+            orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("Next")]
+        ),
     ]
     reconstructed = [
         orbitinfer.recipe.Message(message.role, message.content) for message in messages

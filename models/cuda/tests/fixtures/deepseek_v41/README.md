@@ -1,4 +1,8 @@
 Configuration-only fixtures from DeepSeek-V4.1-Flash-1017 (MIT), revision
+
+> Imported reference documentation. Any hardware results below belong to the
+> upstream snapshot and do not qualify this OrbitInfer build. See the source
+> import record and completion plan at the repository root.
 `1bae0e1088993b9b82de08f59de5be5a34e42170`:
 
 - `config.json`: checkpoint root configuration.

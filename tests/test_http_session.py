@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """The routed session retains the ordinary actor's bounded-stream lifecycle."""
 
 from collections.abc import Sequence

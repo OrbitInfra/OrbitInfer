@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 #![allow(dead_code)]
 
 use orbitinfer_recipe::{AttributedText, Decoder, Error, Event, FinishReason, ResponseParser};

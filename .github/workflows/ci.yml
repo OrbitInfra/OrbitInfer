@@ -33,6 +33,6 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup show
       - name: Build the binding and install CPU test dependencies
-        run: uv sync --locked --group test
+        run: uv sync --locked --no-default-groups --group test
       - name: Check source, Rust, Python and installed wheel
         run: uv run --no-sync python scripts/check.py

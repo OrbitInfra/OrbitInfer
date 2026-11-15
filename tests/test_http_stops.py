@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """HTTP stops match decoded text, including inside and across generated tokens."""
 
 from __future__ import annotations

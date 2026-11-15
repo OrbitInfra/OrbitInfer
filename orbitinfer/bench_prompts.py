@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Saved, chat-templated ShareGPT workloads shared by inference benchmarks.
 
 Loading an artifact uses only the standard library. Preparation imports a

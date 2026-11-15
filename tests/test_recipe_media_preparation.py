@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Native media geometry, ownership, and dependency-free recipe processing."""
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+import torch
 from PIL import Image
 
 import orbitinfer
@@ -58,7 +59,9 @@ GEMMA_CONFIG = {
 
 
 def render_media(recipe, blocks):
-    prompt = recipe.render([orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, blocks)])
+    prompt = recipe.render(
+        [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, blocks)]
+    )
     assert prompt.media is not None
     assert tuple(prompt.token_ids) == prompt.media.token_ids
     return prompt.media
@@ -117,7 +120,9 @@ def test_media_transfer_rejects_unknown_types_versions_and_malformed_buffers():
             metadata, (buffers[0].astype(np.int64), *buffers[1:])
         )
     with pytest.raises(ValueError, match="rank 1"):
-        orbitinfer._native._media_from_buffers(metadata, (buffers[0][None], *buffers[1:]))
+        orbitinfer._native._media_from_buffers(
+            metadata, (buffers[0][None], *buffers[1:])
+        )
     with pytest.raises(ValueError, match="placeholder count"):
         orbitinfer._native._media_from_buffers(
             metadata, (buffers[0], np.ones((2, 1, 2, 2, 3), dtype=np.float32))
@@ -311,6 +316,18 @@ def test_deepseek_geometry_positions_and_cache_identity() -> None:
         assert not np.shares_memory(actual.patches, expected.patches)
 
 
+def test_gemma_text_only_skips_media_embeddings_and_custom_attention_mask() -> None:
+    from orbitinfer_models_cuda.gemma4.cuda import Gemma4CudaRunner
+
+    runner = object.__new__(Gemma4CudaRunner)
+    native: Any = SimpleNamespace(sequence_ids=[7, 8], media=(None, None))
+    batch: Any = SimpleNamespace(phase=orbitinfer.BatchPhase.PREFILL)
+    hidden = torch.arange(12, dtype=torch.float32).reshape(3, 4)
+    expected = hidden.clone()
+    features = runner._merge_media_embeddings(native, batch, hidden)
+    assert features == {}
+    assert torch.equal(hidden, expected)
+    assert runner._local_custom_mask(batch, features) is None
 
 
 def test_native_media_does_not_import_python_image_or_tensor_libraries() -> None:

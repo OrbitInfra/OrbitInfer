@@ -1,8 +1,9 @@
 # OrbitInfer agent guide
 
 Read docs/architecture.md and docs/completion-plan.md before making changes.
-This repository is an independent, NVIDIA-only source adaptation of Resin at
-the revision recorded in third_party/resin/import.json. Preserve attribution.
+This repository is an independent full-source adaptation of the snapshot in
+third_party/upstream/import.json. Product names, modules and tools use OrbitInfer.
+Preserve third-party copyright, licenses, notices and the source manifest.
 
 ## Owners
 
@@ -21,16 +22,19 @@ the revision recorded in third_party/resin/import.json. Preserve attribution.
 
 ## Scope
 
-First model: DeepSeek-V4.1-Flash; first installed target: SM100 on Linux.
-CPU fixtures are permitted; production CPU, Ascend, MLX/Metal and ROCm runners
-are excluded. Other CUDA runners are future, separately verified additions.
+The full source tree includes CUDA, MLX/Metal and Torch reference runners,
+their tests, deployment tools, benchmarks and model-authoring skills. The first
+deployment validation target remains DeepSeek-V4.1-Flash on SM100/Linux.
+Imported source is not hardware qualification for any runner or platform.
 Do not change OrbitKV or OrbiTE from this task. Do not publish packages or model
 weights. Preserve original licenses and source hashes when importing changes.
 
 ## Checks
 
 Use the pinned Rust toolchain and Python 3.12 development environment. Run
-`uv sync --locked --group test` and `uv run --no-sync python scripts/check.py`.
+`uv sync --locked --no-default-groups --group test` and
+`uv run --no-sync python scripts/check.py`. On Apple Silicon, `uv sync --locked`
+also builds the MLX extension and installs all model workspace packages.
 The script runs formatting, Clippy, Rust tests, Python tests, the installed CPU
 example and source/package boundary controls. GPU skips are reported and never
 counted as hardware evidence. Write installed gates before claiming GPU support.

@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Device-selected top-k/top-p thresholds before tiled Philox sampling.
 
 CuTe mass histograms select top-p and native radix selection handles raw top-k.

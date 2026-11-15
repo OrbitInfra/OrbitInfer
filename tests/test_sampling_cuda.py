@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Real CUDA regressions for the shared sampler's request-local random stream."""
 
 from dataclasses import fields, replace

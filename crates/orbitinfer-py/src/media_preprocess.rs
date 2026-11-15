@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 //! Native recipe media preparation. Python is only the input/output buffer boundary.
 
 use std::{collections::VecDeque, mem::size_of, sync::Arc};

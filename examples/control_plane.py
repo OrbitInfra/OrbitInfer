@@ -20,7 +20,9 @@ class CountingRunner:
 
 
 def main():
-    with Engine(CountingRunner(), max_running_requests=2, enable_overlap=False) as engine:
+    with Engine(
+        CountingRunner(), max_running_requests=2, enable_overlap=False
+    ) as engine:
         requests = [
             engine.submit([start], sampling_params=SamplingParams(max_output_tokens=3))
             for start in (10, 20)

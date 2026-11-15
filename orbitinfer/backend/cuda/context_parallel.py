@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Contiguous query ownership and fixed-shape context-parallel token exchange."""
 
 from __future__ import annotations

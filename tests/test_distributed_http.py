@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Real Gloo ranks behind one HTTP listener, including empty participants."""
 
 from __future__ import annotations
@@ -50,7 +50,9 @@ class RankRecipe:
         class Parser:
             def feed(self, ids):
                 return [
-                    orbitinfer.recipe.TextDelta("".join(str(token - 10) for token in ids))
+                    orbitinfer.recipe.TextDelta(
+                        "".join(str(token - 10) for token in ids)
+                    )
                 ]
 
         return Parser()
@@ -367,13 +369,20 @@ def _assert_distributed_metrics(base):
     } == {0: 4, 1: 13}
     assert {
         int(labels["rank"]): value
-        for labels, value in _metric_rows(text, "orbitinfer:forward_execution_seconds_total")
+        for labels, value in _metric_rows(
+            text, "orbitinfer:forward_execution_seconds_total"
+        )
     } == {0: 1, 1: 2, 2: 3, 3: 4}
     assert len(_metric_rows(text, "orbitinfer:cuda_graph_passes_total")) == 4
     assert text.count("# HELP orbitinfer:forward_execution_seconds_total ") == 1
     assert text.count("# TYPE orbitinfer:num_requests_total ") == 1
-    assert _metric_rows(text, "orbitinfer:http_time_to_first_token_seconds_count")[0][1] == 7
-    assert _metric_rows(text, "orbitinfer:http_request_latency_seconds_count")[0][1] == 8
+    assert (
+        _metric_rows(text, "orbitinfer:http_time_to_first_token_seconds_count")[0][1]
+        == 7
+    )
+    assert (
+        _metric_rows(text, "orbitinfer:http_request_latency_seconds_count")[0][1] == 8
+    )
 
 
 @pytest.mark.skipif(not dist.is_gloo_available(), reason="Gloo is required")
@@ -489,7 +498,9 @@ def test_distributed_http_routes_real_replica_engines(tmp_path, case, world_size
             ] == list(range(5))
             with _post(base, headers={"orbitinfer-routed-dp-rank": "1"}) as response:
                 assert json.load(response)["choices"][0]["message"]["content"] == "11"
-            with _post(base, 999, headers={"orbitinfer-routed-dp-rank": "1"}) as response:
+            with _post(
+                base, 999, headers={"orbitinfer-routed-dp-rank": "1"}
+            ) as response:
                 assert json.load(response)["choices"][0]["message"]["content"] == "11"
             with pytest.raises(urllib.error.HTTPError) as failure:
                 _post(base, 0, headers={"orbitinfer-routed-dp-rank": "bad"})

@@ -74,9 +74,7 @@ class Attention(nn.Module):
         # One image is one batch; these views preserve full image attention.
         # cuDNN builds shape-specific plans on first use. Flash consumes new
         # image lengths without that per-geometry planning/compilation stall.
-        with (
-            sdpa_kernel(SDPBackend.FLASH_ATTENTION) if x.is_cuda else nullcontext()
-        ):
+        with sdpa_kernel(SDPBackend.FLASH_ATTENTION) if x.is_cuda else nullcontext():
             o = F.scaled_dot_product_attention(
                 q.transpose(0, 1).unsqueeze(0),
                 k.transpose(0, 1).unsqueeze(0),

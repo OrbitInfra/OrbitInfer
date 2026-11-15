@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Reusable CUDA graph execution for prefill, decode, and other modes."""
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Serving over shared ranks with attention and expert meshes.
 
 The Rust Engine retains scheduling and page ownership. This module coordinates

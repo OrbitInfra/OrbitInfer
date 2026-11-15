@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 # Checkpoint expert storage adapted from DeepSeek-V4-Flash-0731 (MIT).
 """Prepare V4.1 checkpoint tensors for the selected complete FFN backend."""
 

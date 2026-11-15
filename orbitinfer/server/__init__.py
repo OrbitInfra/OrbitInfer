@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """HTTP serving for a token-native OrbitInfer engine.
 
 The networking, scheduling bridge, wire protocols, and streaming adapters run

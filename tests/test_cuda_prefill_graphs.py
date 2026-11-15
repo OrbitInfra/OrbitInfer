@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Prefill graphs capture stateless regions; request-dependent work stays eager."""
 
 from __future__ import annotations

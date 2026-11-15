@@ -1,79 +1,78 @@
-# Resin source import
+# Source import
 
-The foundation is adapted from
+OrbitInfer adapts the complete source snapshot of
 [Resin at a1989594](https://github.com/ekzhang/resin/tree/a1989594d81921be3bffe43804eb0550b216ca64),
 checked on 2026-11-14 and imported on 2026-11-15. The source archive SHA-256 is
 `92464bd55a1b7c5f49291742b4dbaa365a52e78c6c4ca8000c638f9d4191733d`.
-The [manifest](../third_party/resin/import.json) records every selected original
-path and hash, the initial namespace-adapted hash, and every excluded path.
+The [manifest](../third_party/upstream/import.json) maps all 616 upstream files
+to their local paths and records original and namespace-transformed hashes.
+There are no excluded source paths. The previous subset selected 342 files;
+the complete import restores the other 274 files and previously trimmed tests.
 
-## Scope
+## Scope and naming
 
-342 upstream files are imported; 274 are excluded. Counts include tests,
-fixtures, licenses and build metadata, not just production code.
+All four Rust crates, the Python binding, all shared runtime helpers, CUDA,
+MLX/Metal and Torch model packages, tests, fixtures, docs, deployment scripts,
+benchmarks, workflows and authoring skills are present. No model weights or
+upstream Git history are included. The source snapshot, rather than a moving
+branch, defines this import.
 
-| Imported owner | Files | Scope |
-| --- | ---: | --- |
-| `orbitinfer-core` | 20 | Rust scheduling, execution transactions, pages, leases and storage contracts |
-| `orbitinfer-py` | 23 | PyO3 binding, request owners and frontend/session bridge |
-| `orbitinfer-http` | 11 | Existing bounded HTTP frontend and its protocol controls |
-| `orbitinfer-recipe` | 51 | Existing prompt/response formatting dependency and its fixtures |
-| `orbitinfer` Python package | 64 | Shared execution/CUDA helpers, cache reference provider and DeepSeek configuration |
-| NVIDIA model package and tests | 59 | DeepSeek-V4.1 runner, retained DeepInfer operators and model controls |
-| Root Python tests and fixtures | 108 | Engine, completion, storage, transport, media and grammar controls |
-| Root build/support files | 6 | Cargo metadata, test fixtures and license |
+Product names, Python imports, Rust crates, environment names, metrics,
+protocol fields, kernel symbols, cache paths and tool names use OrbitInfer.
+The native Python module is `orbitinfer._native`; there is no upstream runtime
+package or compatibility alias. Original project names remain only in legal
+notices, provenance records and checks which reject old namespaces.
 
-The import excludes MLX, CPU model runners, non-DeepSeek CUDA runners, upstream
-deployment scripts, demo applications and benchmark CLIs. No model weights are
-included. Generic recipe support is retained because it is a real binding
-dependency; it does not advertise support for those models. Existing upstream
-model reports remain labeled as upstream evidence, not OrbitInfer validation.
+Original licenses, copyright and NOTICE text are retained. Source and model
+packages include their applicable notices. Upstream benchmark numbers in
+imported guides are historical reference measurements, not OrbitInfer results.
+See the [historical audit](../third_party/upstream/source-audit.md) for the
+original NVIDIA-only evaluation; the full-source scope supersedes its exclusions.
 
 ## Adaptations
 
-- Rename Rust crates and Python modules to OrbitInfer; the native extension is
-  `orbitinfer._native`. Rename paired protocol/HTML fields together. No Resin
-  runtime package or compatibility alias is required.
-- Keep the core wheel importable without Torch or CUDA. Model dependencies live
-  in a separate NVIDIA package. CPU tensor tests install Torch through the test
-  dependency group. Cargo and uv lockfiles fix the development environment.
-- Retain the upstream Rust core, HTTP and recipe code together with the binding.
-  No scheduler, allocator or coordinator is added.
-- Simplify three boolean expressions equivalently for Clippy on Rust 1.96 and
-  remove an obsolete PyO3 lint expectation. These change no runtime condition.
-- Initialize Python explicitly in the Rust NumPy-borrow test, so it does not
-  depend on another parallel test initializing the interpreter first. Preserve
-  every assertion about the borrowed storage.
-- Match the standard-library dataclass exception to Python 3.11/3.12 versus
-  3.13+ while preserving the immutable-plan control. The local CPU test runner
-  selects the loopback interface for child-process Gloo collectives.
-- Remove model-specific test cases that instantiate excluded runners. Preserve
-  their shared layout, topology and recipe controls. Exclude CLI/deployment tests
-  whose owning scripts are not imported; the manifest lists the exact paths.
-- Add a deterministic CPU runner example, an isolated installed-wheel check and
-  a Linux/macOS CI definition. No fake OrbitKV adapter is provided.
-
-The original Apache license and NOTICE are retained under `third_party/resin`.
-DeepSeek MIT and DeepInfer Apache licenses stay next to their imported model
-code. Packaging includes the applicable notices. Original source URLs remain
-unchanged. Modified source files carry an adaptation notice. The upstream prompt
-template keeps its terminal blank separator byte-for-byte; `.gitattributes`
-exempts only that file's final blank line from whitespace checks.
+- Rename project identifiers consistently in Python, Rust, C++, CUDA, Metal,
+  build metadata, templates and fixtures; retain algorithms and ownership.
+- Keep the existing equivalent Clippy boolean simplifications, Rust formatting,
+  and removal of an obsolete PyO3 lint expectation for the pinned Rust toolchain.
+- Keep explicit Python initialization in the Rust NumPy-borrow control, and the
+  CPython-version-specific dataclass exception check. No assertion is removed.
+- Restore the complete upstream Python workspace and all model/test entrypoints.
+  Retain a CPU-only test dependency group for machines without native GPU SDKs.
+- Use pytest's importlib mode so CUDA and MLX tests with the same basename can
+  run together. The MLX ordering control explicitly skips when MLX is absent,
+  matching the other MLX controls; the Apple workflow requires Metal and cannot
+  silently accept missing MLX coverage.
+- Keep local development versions and `publish = false` for Rust crates. There
+  is no remote repository or package publication in this step.
+- Preserve the deterministic CPU example and isolated installed-wheel check.
+  CPU distributed controls select the local loopback interface.
+- Replace the upstream README's performance promotion with the current
+  qualification limits. Existing owner documentation remains in place.
 
 ## Validation and limits
 
-Local host: macOS 26.6.2, arm64, Python 3.12.6, Rust 1.96.0. The source-boundary
-check, formatting, strict Clippy and 310 Rust tests pass. Python reports 1,367
-passed and 259 explicit skips: 236 require CUDA, two require Linux and 21 require
-cached optional reference processors. The isolated installed wheel executes the
-checked two-request example and imports without Torch, CUDA helpers or Resin.
-The core sdist and separate model-source wheel build with their licenses.
+Local host: macOS arm64, Python 3.12.6, Rust 1.96.0. All 616 original file
+hashes match the pinned archive and every mapped local file is present.
 
-The workflow is written but has not run on GitHub. Linux behavior, CUDA kernels,
-complete model numerics and SM100 performance are not established by these local
-checks. There is no installed GPU qualification or published package.
+| Check | Result |
+| --- | --- |
+| Namespace, complete import and original license checks | Pass |
+| Rust formatting, strict Clippy, workspace tests and doctests | Pass; 310 tests |
+| Python Ruff, formatting and `ty` with locked library type sources | Pass |
+| Complete Python suite | 2,405 passed; 551 explicit skips |
+| MLX native build and included small Metal controls | Pass; 59 MLX tests within the full suite |
+| Core, CUDA, Torch and MLX wheels; core sdist | Built with original notices |
+| Isolated installed core CPU example | Pass; two requests and checked token results |
+| Isolated installed package imports | Pass; no eager accelerator or upstream runtime import |
 
-The next gate is the P0 lifetime/storage audit in the [plan](completion-plan.md):
-prove final-reference retention of actual arena backing after failed device
-completion, then implement the OrbitKV boundary on the same core. Imported
-quarantine flags and CPU fixtures do not substitute for that proof.
+Python passes comprise 1,614 shared controls, 713 CUDA-package CPU controls,
+59 MLX controls and 19 Torch controls. Skips comprise 524 CUDA/hardware checks,
+two Linux checks and 25 checks requiring uncached reference processors or
+checkpoints. No skip is counted as hardware evidence. The missing local Metal
+compiler component was installed to compile and execute the MLX controls.
+
+No complete GPU model has been run, no deployment tool has been executed
+against a cloud account, and no package has been published. Linux and remote CI
+are unrun. The [completion plan](completion-plan.md) separates this source
+import from installed model validation and future OrbitKV/OrbiTE integration.

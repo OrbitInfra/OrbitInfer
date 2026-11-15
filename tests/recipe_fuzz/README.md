@@ -1,7 +1,3 @@
-> Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
-
-> Imported from Resin at `a1989594d81921be3bffe43804eb0550b216ca64`. Upstream hardware results below do not qualify OrbitInfer.
-
 Run `uv run pytest tests/recipe_fuzz -q` for 40 reproducible examples per style,
 targeting roughly one second of fuzz execution per model. Interpreter imports
 and one-time reference setup are separate; the complete cold suite takes about

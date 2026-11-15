@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """The DeepSeek V4.1 recipe preserves the 1017 prompt and tool grammar."""
 
 import pytest
@@ -18,11 +18,16 @@ def test_exported_recipe_uses_system_token_and_numeric_native_options(adapter):
     model_recipe = get_native_recipe("deepseek_v41", adapter.recipe.tokenizer)
     messages = [
         orbitinfer.recipe.Message(
-            orbitinfer.recipe.Role.SYSTEM, [orbitinfer.recipe.Text("literal <｜System｜>")]
+            orbitinfer.recipe.Role.SYSTEM,
+            [orbitinfer.recipe.Text("literal <｜System｜>")],
         ),
-        orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]),
+        orbitinfer.recipe.Message(
+            orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+        ),
     ]
-    options = orbitinfer.recipe.RenderOptions(thinking_mode="thinking", reasoning_effort=37)
+    options = orbitinfer.recipe.RenderOptions(
+        thinking_mode="thinking", reasoning_effort=37
+    )
     rendered = model_recipe.render(messages, options=options)
     assert rendered.token_ids.tolist().count(adapter.ids["<｜System｜>"]) == 1
     assert "Reasoning Effort: 37 (range 1-100," in model_recipe.debug_render_text(
@@ -38,7 +43,11 @@ def test_exported_recipe_uses_system_token_and_numeric_native_options(adapter):
 def test_numeric_budget_validates_before_rendering(adapter, effort):
     with pytest.raises(ValueError, match="reasoning_effort"):
         adapter.recipe.render(
-            [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")])],
+            [
+                orbitinfer.recipe.Message(
+                    orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+                )
+            ],
             options=orbitinfer.recipe.RenderOptions(reasoning_effort=effort),
         )
 
@@ -53,7 +62,11 @@ def test_v41_tool_grammar_preserves_namespaces_and_arguments(adapter):
     )
     ids = adapter.encode(case)
     prompt = adapter.recipe.render(
-        [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")])],
+        [
+            orbitinfer.recipe.Message(
+                orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+            )
+        ],
         options=orbitinfer.recipe.RenderOptions(thinking_mode="thinking"),
     )
     parsed = adapter.recipe.parse_response(ids, prompt=prompt)

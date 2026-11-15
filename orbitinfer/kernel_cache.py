@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Content-validated cache records for runtime-built kernel libraries.
 
 The cache never consults mtimes.  A record is usable only when its ABI,
@@ -314,7 +314,9 @@ def wrap_flashinfer_build_and_load(
 
     setattr(build_and_load, "_orbitinfer_artifact_cache", cache)
     setattr(
-        build_and_load, "_orbitinfer_durable_artifact_resolver", durable_artifact_resolver
+        build_and_load,
+        "_orbitinfer_durable_artifact_resolver",
+        durable_artifact_resolver,
     )
     return build_and_load
 

@@ -1,3 +1,4 @@
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 [build-system]
 requires = ["maturin>=1.9,<2"]
 build-backend = "maturin"
@@ -5,18 +6,21 @@ build-backend = "maturin"
 [project]
 name = "orbitinfer"
 version = "0.1.0.dev1"
-description = "NVIDIA inference runtime with Rust scheduling and explicit resource ownership"
+description = "A small Rust substrate for model-specific inference engines"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-license-files = ["LICENSE", "NOTICE", "third_party/resin/NOTICE", "crates/orbitinfer-recipe/licenses/*.txt"]
-classifiers = ["Development Status :: 2 - Pre-Alpha", "Programming Language :: Rust", "Programming Language :: Python :: 3"]
-dependencies = ["blake3>=1.0,<2", "numpy>=1.26,<3"]
+license-files = ["LICENSE", "NOTICE", "third_party/upstream/NOTICE", "crates/orbitinfer-recipe/licenses/*.txt"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["blake3>=1.0,<2", "numpy>=1.26,<3", "torch>=2.13.0"]
 
 [project.optional-dependencies]
 cuda = [
-  "torch==2.13.0",
-  "flashinfer-python==0.7.1; sys_platform == 'linux'",
+  "flashinfer-python>=0.6.15.post1; sys_platform == 'linux'",
   "cuda-bindings>=13.3,<14; sys_platform == 'linux'",
   "nvidia-cutlass-dsl==4.6.2; sys_platform == 'linux'",
   "nvidia-cutlass-dsl-libs-base==4.6.2; sys_platform == 'linux'",
@@ -31,7 +35,32 @@ test = [
   "huggingface-hub>=0.35", "transformers==5.14.1",
   "tml-renderers==0.2.0", "renderers==0.1.9",
   "deepseek-recipe==0.2.0", "openai-harmony==0.0.8",
-  "matplotlib>=3.10,<4", "ruff>=0.16,<0.17",
+  "matplotlib>=3.10,<4", "ruff>=0.16,<0.17", "modal>=1.5.3", "ty>=0.0.90",
+]
+deployment = [
+  "modal>=1.5.3",
+  "orbitinfer-models-cuda",
+  "transformers>=5.14.1",
+]
+dev = [
+  "hypothesis>=6.140,<7",
+  "tml-renderers==0.2.0",
+  "orbitinfer-models-torch",
+  "orbitinfer-models-cuda",
+  "orbitinfer-models-mlx",
+  "maturin>=1.9,<2",
+  "modal>=1.5.3",
+  "pytest>=8,<9",
+  "ruff>=0.16,<0.17",
+  "huggingface-hub>=0.35",
+  "safetensors>=0.5",
+  "renderers==0.1.9",
+  "tokenizers>=0.22.2",
+  "transformers>=5.14.1",
+  "ty>=0.0.90",
+  "deepseek-recipe==0.2.0",
+  "openai-harmony==0.0.8",
+  "matplotlib>=3.10,<4",
 ]
 
 [tool.maturin]
@@ -40,27 +69,112 @@ module-name = "orbitinfer._native"
 python-source = "."
 python-packages = ["orbitinfer"]
 features = ["pyo3/extension-module"]
-include = [{ path = "orbitinfer/backend/cuda/sampling_topk.cu", format = ["sdist", "wheel"] }]
-
-[tool.pytest.ini_options]
-pythonpath = [".", "models/cuda"]
-testpaths = ["tests", "models/cuda/tests"]
+include = [
+  { path = "orbitinfer/backend/cuda/sampling_topk.cu", format = ["sdist", "wheel"] },
+  { path = "third_party/upstream/import.json", format = "sdist" },
+  { path = "docs/source-import.md", format = "sdist" },
+]
 
 [tool.ruff]
 target-version = "py311"
+
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I", "TID252"]
+
 [tool.ruff.lint.per-file-ignores]
 "orbitinfer/_native.pyi" = ["I001"]
+
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
+
 [tool.ruff.lint.isort]
-known-first-party = ["orbitinfer", "orbitinfer_models_cuda"]
+known-first-party = [
+  "orbitinfer",
+  "orbitinfer_models_cuda",
+  "orbitinfer_models_mlx",
+  "orbitinfer_models_torch",
+]
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+pythonpath = [".", "tests", "models/cuda", "models/mlx", "models/torch", "models/cuda/tests", "models/mlx/tests", "models/torch/tests"]
+testpaths = ["tests", "models/cuda/tests", "models/mlx/tests", "models/torch/tests"]
 
 [tool.uv]
-default-groups = []
+default-groups = ["dev"]
+# Workspace-only compatibility overrides for the CUDA model kernel stack. These
+# do not become dependencies of the published core OrbitInfer package.
 override-dependencies = [
   "apache-tvm-ffi==0.1.12; sys_platform == 'linux'",
   "nvidia-cutlass-dsl==4.6.2; sys_platform == 'linux'",
   "nvidia-cutlass-dsl-libs-base==4.6.2; sys_platform == 'linux'",
 ]
+
+# DeepGEMM's setup.py imports CUDA while computing metadata. Keep resolution
+# portable; build its pinned source only on Linux, against the runtime Torch.
+[[tool.uv.dependency-metadata]]
+name = "deep-gemm"
+version = "2.8.2"
+requires-dist = []
+
+[[tool.uv.dependency-metadata]]
+name = "flash-mla"
+version = "1.0.0"
+requires-dist = []
+
+[[tool.uv.dependency-metadata]]
+name = "deep-select"
+version = "1.0.0"
+requires-dist = []
+
+[tool.uv.extra-build-dependencies]
+deep-gemm = [
+  { requirement = "torch", match-runtime = true },
+  "setuptools==80.9.0",
+  "packaging>=24",
+  "wheel==0.45.1",
+  "pybind11==3.0.1",
+  "tree-sitter==0.26.0",
+  "tree-sitter-cpp==0.23.4",
+]
+flash-mla = [
+  { requirement = "torch", match-runtime = true },
+  "triton==3.7.1",
+  "setuptools==80.9.0",
+  "wheel==0.45.1",
+  "ninja>=1.11",
+  "packaging>=24",
+]
+deep-select = [
+  { requirement = "torch", match-runtime = true },
+  "triton==3.7.1",
+  "setuptools==80.9.0",
+  "wheel==0.45.1",
+  "ninja>=1.11",
+  "packaging>=24",
+]
+
+[tool.uv.extra-build-variables]
+deep-gemm = { DG_USE_LOCAL_VERSION = "0", DG_FORCE_BUILD = "1" }
+deep-select = { DEEP_SELECT_BUILD_TARGET_PLATFORM = "CUDA", MAX_JOBS = "4", NVCC_THREADS = "4" }
+# CUDA 13.3 spills in an unused legacy split-KV kernel; disable the upstream
+# blanket build-time spill check.
+flash-mla = { FLASH_MLA_BUILD_TARGET_PLATFORM = "CUDA", FLASH_MLA_SKIP_REG_SPILL_CHECK = "1", MAX_JOBS = "4", NVCC_THREADS = "4" }
+
+[tool.uv.sources]
+orbitinfer-models-cuda = { workspace = true }
+orbitinfer-models-mlx = { workspace = true }
+orbitinfer-models-torch = { workspace = true }
+
+[tool.uv.workspace]
+members = ["models/*"]
+
+[tool.ty.rules]
+# Development doesn't have all GPU-only packages available.
+unresolved-import = "ignore"
+
+# nn.Module declares forward as a writable Callable; model methods specialize it.
+invalid-mutable-override = "ignore"
+
+[tool.ty.environment]
+extra-paths = [".type-libs/sources"]

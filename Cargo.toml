@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 [workspace]
 members = ["crates/orbitinfer-core", "crates/orbitinfer-http", "crates/orbitinfer-recipe", "crates/orbitinfer-py"]
 resolver = "3"

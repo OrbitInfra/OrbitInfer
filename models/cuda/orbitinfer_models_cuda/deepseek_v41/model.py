@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 # Base configuration fields adapted from DeepSeek-V4-Flash-0731 (MIT).
 """DeepSeek V4.1's shared-KV/CED and shifted-HC text architecture.
 

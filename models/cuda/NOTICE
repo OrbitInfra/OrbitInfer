@@ -1,10 +1,12 @@
-OrbitInfer NVIDIA model source package
+OrbitInfer
 
-Adapted from Resin at a1989594d81921be3bffe43804eb0550b216ca64.
-Only its DeepSeek NVIDIA runner and shared helper are included. Original
-DeepSeek and DeepInfer licenses remain beside their source files. The complete
-upstream notice follows; references to other models describe upstream, not
-additional OrbitInfer model implementations. No weights are included.
+Derived from Resin by Eric Zhang and contributors, revision
+a1989594d81921be3bffe43804eb0550b216ca64.
+https://github.com/ekzhang/resin
+
+Files are renamed and adapted as described in docs/source-import.md.
+Original attribution follows unchanged; its paths refer to the upstream tree.
+The local paths are mapped in third_party/upstream/import.json.
 
 Resin
 

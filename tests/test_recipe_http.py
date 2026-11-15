@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Exercise each stock native parser through the actual HTTP actor."""
 
 from __future__ import annotations
@@ -114,10 +114,18 @@ def test_native_prompt_provenance_and_stop_encoding(recipe_adapter):
     _, adapter = recipe_adapter
     marker, marker_id = next(iter(adapter.ids.items()))
     baseline = adapter.recipe.render(
-        [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hello")])]
+        [
+            orbitinfer.recipe.Message(
+                orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hello")]
+            )
+        ]
     )
     rendered = adapter.recipe.render(
-        [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text(marker)])]
+        [
+            orbitinfer.recipe.Message(
+                orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text(marker)]
+            )
+        ]
     )
     assert rendered.token_ids.tolist().count(
         marker_id

@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -75,18 +75,25 @@ def _coalesce(events: list[ParserEvent]) -> list[ParserEvent]:
     """Ignore chunk boundaries and provenance for this semantic comparison."""
     result: list[ParserEvent] = []
     for event in events:
-        if isinstance(event, (orbitinfer.recipe.TextDelta, orbitinfer.recipe.ReasoningDelta)):
+        if isinstance(
+            event, (orbitinfer.recipe.TextDelta, orbitinfer.recipe.ReasoningDelta)
+        ):
             previous = result[-1] if result else None
             if isinstance(
-                previous, (orbitinfer.recipe.TextDelta, orbitinfer.recipe.ReasoningDelta)
+                previous,
+                (orbitinfer.recipe.TextDelta, orbitinfer.recipe.ReasoningDelta),
             ) and type(previous) is type(event):
                 result[-1] = type(event)(previous.delta + event.delta)
             else:
                 result.append(type(event)(event.delta))
         elif isinstance(event, orbitinfer.recipe.ToolCallStart):
-            result.append(orbitinfer.recipe.ToolCallStart(event.index, event.id, event.name))
+            result.append(
+                orbitinfer.recipe.ToolCallStart(event.index, event.id, event.name)
+            )
         elif isinstance(event, orbitinfer.recipe.ToolCallArgumentsDelta):
-            result.append(orbitinfer.recipe.ToolCallArgumentsDelta(event.index, event.delta))
+            result.append(
+                orbitinfer.recipe.ToolCallArgumentsDelta(event.index, event.delta)
+            )
         else:
             raise AssertionError(f"unexpected parser event: {event}")
     return result
@@ -106,7 +113,11 @@ def test_complete_response_uses_actual_generation_prefix() -> None:
         ]
     )
     model_recipe = get_native_recipe("gpt_oss", backend, use_system_prompt=False)
-    messages = [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")])]
+    messages = [
+        orbitinfer.recipe.Message(
+            orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+        )
+    ]
     prompt = model_recipe.render(messages)
     output = backend.encode(
         "think<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>",
@@ -281,7 +292,9 @@ def test_callback_tokenizer_keeps_ordinary_encoding_and_serving_stops_separate()
     model_recipe = get_native_recipe("inkling", tokenizer)
     marker = "<|content_model_end_sampling|>"
     messages = [
-        orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text(marker)])
+        orbitinfer.recipe.Message(
+            orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text(marker)]
+        )
     ]
     rendered = model_recipe.render(messages)
     assert tokenizer.markers[marker] not in rendered.token_ids
@@ -315,7 +328,11 @@ def test_callback_decoder_is_captured_once_instead_of_refetched():
     model_recipe = get_native_recipe("inkling", tokenizer)
     parser = model_recipe.create_parser(
         model_recipe.render(
-            [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")])]
+            [
+                orbitinfer.recipe.Message(
+                    orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+                )
+            ]
         )
     )
     assert parser.feed([tokenizer.markers["<|content_text|>"]]) == []
@@ -326,7 +343,11 @@ def test_callback_decoder_is_captured_once_instead_of_refetched():
 
 def test_deepseek_constructor_effort_matches_per_request_effort():
     backend = _byte_tokenizer()
-    messages = [orbitinfer.recipe.Message(orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")])]
+    messages = [
+        orbitinfer.recipe.Message(
+            orbitinfer.recipe.Role.USER, [orbitinfer.recipe.Text("hi")]
+        )
+    ]
     configured = get_native_recipe(
         "deepseek_v41",
         backend,
@@ -338,7 +359,9 @@ def test_deepseek_constructor_effort_matches_per_request_effort():
     )
     assert configured.debug_render_text(messages) == expected
     assert (
-        configured.debug_render_text(messages, options=orbitinfer.recipe.RenderOptions())
+        configured.debug_render_text(
+            messages, options=orbitinfer.recipe.RenderOptions()
+        )
         == expected
     )
     assert configured.debug_render_text(

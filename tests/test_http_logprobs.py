@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Scores cross the real HTTP actor without losing token identity or bytes."""
 
 from __future__ import annotations
@@ -511,7 +511,8 @@ def test_prompt_scores_allow_zero_output_tokens(api, stream):
     prompt_ids = recipe.render(
         [
             orbitinfer.recipe.Message(
-                role=orbitinfer.recipe.Role.USER, content=[orbitinfer.recipe.Text("score this")]
+                role=orbitinfer.recipe.Role.USER,
+                content=[orbitinfer.recipe.Text("score this")],
             )
         ]
     ).token_ids
@@ -598,8 +599,12 @@ def custom_scored_recipe(*, with_spans, calls, invalid=None):
                         return []
                     if malformed == "event_order":
                         return [
-                            orbitinfer.recipe.TextDelta("b", token_spans=[(1, 0, 1, 0, 1)]),
-                            orbitinfer.recipe.TextDelta("a", token_spans=[(0, 0, 1, 0, 1)]),
+                            orbitinfer.recipe.TextDelta(
+                                "b", token_spans=[(1, 0, 1, 0, 1)]
+                            ),
+                            orbitinfer.recipe.TextDelta(
+                                "a", token_spans=[(0, 0, 1, 0, 1)]
+                            ),
                         ]
                     spans: Any = [(index, 0, 1, index, index + 1) for index in range(2)]
                     if malformed == "payload":

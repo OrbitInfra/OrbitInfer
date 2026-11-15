@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 use orbitinfer_recipe::deepseek::DeepSeekV41Recipe;
 use orbitinfer_recipe::gemma::Gemma4Recipe;
 use orbitinfer_recipe::gpt_oss::GptOssRecipe;

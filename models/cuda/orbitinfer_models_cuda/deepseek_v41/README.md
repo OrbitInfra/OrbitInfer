@@ -1,11 +1,8 @@
-> Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
-
-> Imported from Resin at `a1989594d81921be3bffe43804eb0550b216ca64`. Upstream hardware results below do not qualify OrbitInfer.
-
-> These retained model notes include upstream benchmark/deployment commands whose
-> scripts are not imported. Use the root `docs/build.md` for OrbitInfer setup.
-
 # DeepSeek V4.1 Flash runner
+
+> Imported reference documentation. Any hardware results below belong to the
+> upstream snapshot and do not qualify this OrbitInfer build. See the source
+> import record and completion plan at the repository root.
 
 `DeepSeekV41CudaRunner` loads indexed safetensors from
 `deepseek-ai/DeepSeek-V4.1-Flash-1017`, revision

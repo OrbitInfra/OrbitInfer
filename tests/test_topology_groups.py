@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Control subgroups avoid NCCL splitting on nonmember ranks."""
 
 from __future__ import annotations

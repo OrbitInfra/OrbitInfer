@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Paged V4.1 state contracts against independent Torch equations.
 
 The official 1017 inference/model.py is read as a specification; no checkpoint

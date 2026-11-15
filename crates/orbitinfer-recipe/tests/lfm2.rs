@@ -1,4 +1,4 @@
-// Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+// Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 use orbitinfer_recipe::ResponseParser;
 use orbitinfer_recipe::{Recipe, lfm2::Lfm2Recipe};
 mod common;

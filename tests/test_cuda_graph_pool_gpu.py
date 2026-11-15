@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """Cross-mode graph scratch reuse must preserve state and delayed outputs."""
 
 from __future__ import annotations

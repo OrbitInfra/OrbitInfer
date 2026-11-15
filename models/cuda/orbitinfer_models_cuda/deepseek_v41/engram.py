@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 # Adapted from DeepSeek-V4.1-Flash-1017, MIT license.
 # https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017/blob/
 # 1bae0e1088993b9b82de08f59de5be5a34e42170/inference/engram.py

@@ -1,4 +1,4 @@
-# Adapted from Resin a1989594 for OrbitInfer; changes: docs/source-import.md.
+# Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 """DeepInfer's lazy shifted-HC transitions using the pinned DeepGEMM ABI.
 
 Adapted from DeepInfer's v4_modules/hc.py::_mega_mhc, hc_lazy.py, and
