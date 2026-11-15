@@ -60,7 +60,8 @@ def main():
             "-I",
             "-c",
             "import sys, orbitinfer; "
-            "imported = {'torch', 'resin', 'flashinfer', 'mlx'} & sys.modules.keys(); "
+            "from orbitinfer.integrations.orbitkv import OrbitKVCacheStorage; "
+            "imported = {'torch', 'orbitkv', 'resin', 'flashinfer', 'mlx'} & sys.modules.keys(); "
             "wrong = orbitinfer.Engine.__module__ != 'orbitinfer._native'; "
             "sys.exit(f'unexpected import: {imported}, binding={wrong}' if imported or wrong else 0)",
             cwd=out,

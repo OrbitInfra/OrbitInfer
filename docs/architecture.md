@@ -6,9 +6,10 @@ from installed validation; see the [completion plan](completion-plan.md).
 ## OrbitInfer integration boundaries
 
 OrbitInfer owns inference scheduling and device-page leases. A selected external
-provider owns cache residency and tier policy. The first planned integration is
-OrbitKV, with OrbiTE owning its byte transfers; Mooncake Store and LMCache are
-alternative providers. These integrations are not implemented yet. The
+provider owns cache residency and tier policy. The first source-level adapter is [OrbitKV local DRAM](orbitkv-dram.md), using its
+existing native registration and transfer owners for fixed GPU blocks. Window/
+state mappings and installed validation remain open. Mooncake Store and LMCache
+are separate planned providers. The
 [hierarchical cache proposal](external-kv-design.md) extends the existing storage
 owners without adding a second scheduler or allocator.
 

@@ -130,6 +130,9 @@ class _PrefixStorage:
             if g.family != CacheGroupFamily.STATE
             and g.window_resident_block_count is None
         }
+        validate = getattr(store, "validate_binding", None)
+        if validate is not None:
+            validate(identity, layout)
 
     def _keys(self, key):
         namespace, tokens = key

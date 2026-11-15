@@ -8,8 +8,8 @@ custom providers can implement other storage tiers through the same interface.
 
 The [hierarchical external KV proposal](external-kv-design.md) specifies identity,
 byte budgets and the planned OrbitKV/Mooncake Store/LMCache adapters. Identity,
-budgets and independent operation/retirement receipts are implemented below. The remaining proposal
-is not an integration claim; none of those three adapters is available yet.
+budgets and independent operation/retirement receipts are implemented below. The [OrbitKV local DRAM adapter](orbitkv-dram.md) accepts fixed full-history CUDA
+blocks. Its installed profile is unqualified; other adapters remain planned.
 
 ## Using the DRAM cache
 
