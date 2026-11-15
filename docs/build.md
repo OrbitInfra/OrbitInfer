@@ -1,6 +1,6 @@
 # Build and CPU checks
 
-The source import uses Rust 1.96 and Python 3.12. The core has no Python or GPU
+Development uses Rust 1.96 and Python 3.12. The core has no Python or GPU
 runtime dependency; the binding is abi3 for Python 3.11 and newer. That ABI choice
 is inherited, not a claim that all Python/GPU combinations have been tested.
 
@@ -11,7 +11,7 @@ uv run --no-sync python scripts/check.py
 
 The test group installs CPU-capable Torch for tensor/layout controls. It does
 not resolve or install the separate CUDA model package. Importing `orbitinfer` must not
-import Torch or load an accelerator library. `examples/control_plane.py` runs
+import Torch or load an accelerator library. `tests/installed/check_runtime.py` runs
 through the compiled binding with a deterministic test runner and checked tokens.
 
 Individual commands:

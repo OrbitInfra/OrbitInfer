@@ -6,7 +6,8 @@ https://github.com/ekzhang/resin
 
 Files are renamed and adapted as described in docs/source-import.md.
 Original attribution follows unchanged; its paths refer to the upstream tree.
-The local paths are mapped in third_party/upstream/import.json.
+Local Python and crate prefixes use orbitinfer and orbitinfer_models_*;
+the original attribution text below is preserved.
 
 Resin
 

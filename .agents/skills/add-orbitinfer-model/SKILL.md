@@ -30,19 +30,19 @@ encoding, MoE routing, recurrent/sliding state, vocabulary, and multimodal detai
 
 Reuse an existing recipe when its formatting, parsing and media semantics match.
 When working in the OrbitInfer repository or a fork, implement a new native Rust recipe
-in [`orbitinfer-recipe`](../../crates/orbitinfer-recipe/README.md) and its bindings. When
+in [`orbitinfer-recipe`](../../../crates/orbitinfer-recipe/README.md) and its bindings. When
 importing OrbitInfer as a library without its source, implement the
-[`orbitinfer.recipe.Recipe`](../../orbitinfer/recipe.py) protocol in Python instead; a Rust
+[`orbitinfer.recipe.Recipe`](../../../orbitinfer/recipe.py) protocol in Python instead; a Rust
 change is not required. Keep formatting and parsing in the recipe rather than
 duplicating them inside a deployment script.
 
 Before implementation, read the relevant parts of:
 
-- [Runner authoring](../../docs/model-forward-pass.md): model preparation,
+- [Runner authoring](../../../docs/model-forward-pass.md): model preparation,
   shapes, graphs, cache ownership, speculation, and validation.
-- [CUDA package boundaries](../../models/cuda/ARCHITECTURE.md): where model and
+- [CUDA package boundaries](../../../models/cuda/ARCHITECTURE.md): where model and
   hardware code belongs.
-- [Distributed execution](../../docs/distributed.md), when using several GPUs.
+- [Distributed execution](../../../docs/distributed.md), when using several GPUs.
 
 ## 2. Implement and qualify the forward-pass Runner
 
@@ -50,7 +50,7 @@ Implement the reference-correct forward path and checkpoint loading in the ownin
 model package, importing or implementing the best suitable kernels. Keep cache
 allocation, scheduling, prefix ownership and request lifetime in the Engine. Use
 existing runtime staging, graph, sampling and distributed machinery. Extend the
-shared [model registry](../../deploy/models.py) for hardware presets and runtime
+shared [model registry](../../../deploy/models.py) for hardware presets and runtime
 construction; do not create a per-model deployment file or a new Modal probe suite.
 
 Compare logits and greedy tokens against an independent trusted reference before
@@ -87,14 +87,14 @@ requirements, including imported upstream kernels:
   is not proof. If tooling lacks this evidence, add reusable instrumentation or
   leave that qualification explicitly unresolved.
 
-Read [CUDA graph contracts](../../docs/cuda-graphs.md) and
-[kernel artifact caching](../../docs/kernel-cache.md) for the relevant invariants.
+Read [CUDA graph contracts](../../../docs/cuda-graphs.md) and
+[kernel artifact caching](../../../docs/kernel-cache.md) for the relevant invariants.
 
 ## 3. Implement fast, graphed and overlapped speculative decoding
 
 Use the research to select the supported speculator and implement draft generation,
 target verification, acceptance, commit and rollback inside the runner. Reuse
-[`orbitinfer.backend.speculative`](../../orbitinfer/backend/speculative.py) and the shared
+[`orbitinfer.backend.speculative`](../../../orbitinfer/backend/speculative.py) and the shared
 CUDA completion/overlap machinery; do not introduce a separate scheduler.
 
 Keep the GPU draft/verify path graphable and prepare its buffers before capture.
@@ -127,7 +127,7 @@ claiming the full integration is qualified.
 
 Place the runner in the Engine and start its native HTTP server on the agreed GPU
 host. This can be a temporary test server; a public Modal deployment is not needed
-for validation. Use [`scripts/check_server.py`](../../scripts/check_server.py)
+for validation. Use [`scripts/check_server.py`](../../../scripts/check_server.py)
 and the normal runtime tests, rather than adding model-specific diagnostic CLIs.
 
 Run ordinary JSON/streaming requests, token usage/logprobs, concurrency, context
@@ -163,9 +163,9 @@ runner-level evidence from step 2 to close gaps in HTTP observability.
 Use the [performance optimization skill](../optimize-orbitinfer-performance/SKILL.md)
 for the profiling and iteration loop, including lessons from earlier OrbitInfer work.
 
-Use [`scripts/bench.py`](../../scripts/bench.py), backed by `orbitinfer.bench`, and
-[`scripts/plot_bench.py`](../../scripts/plot_bench.py). Read the
-[benchmark guide](../../docs/benchmarks.md) for timing and topology semantics.
+Use [`scripts/bench.py`](../../../scripts/bench.py), backed by `orbitinfer.bench`, and
+[`scripts/plot_bench.py`](../../../scripts/plot_bench.py). Read the
+[benchmark guide](../../../docs/benchmarks.md) for timing and topology semantics.
 Start with an 8K curve and traces on the target GPU configuration:
 
 ```bash
@@ -213,7 +213,7 @@ commands, natural acceptance, baseline comparisons, and unresolved limitations.
 
 ## 6. Deploy to Modal if requested
 
-Use [`deploy/modal_serve.py`](../../deploy/modal_serve.py) with `ORBITINFER_MODEL`
+Use [`deploy/modal_serve.py`](../../../deploy/modal_serve.py) with `ORBITINFER_MODEL`
 selecting the shared registry entry. Keep checkpoint download/publication separate
 from GPU startup; add configuration to the registry instead of a new deployment
 script. When deployment is already authorized, proceed after qualification without

@@ -1,4 +1,4 @@
-"""CPU control-plane example with checked tokens; this is not a language model."""
+"""Installed-wheel CPU runtime check; this is not a language model."""
 
 import numpy as np
 

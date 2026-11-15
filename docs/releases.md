@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Project skills move to `.agents/skills/`. The counting example becomes an
+  installed-wheel test. The source-mirror manifest and superseded audit are
+  removed; licenses and attribution remain in NOTICE and package notices.
+  External changes are reviewed manually, not synchronized automatically.
+
 - External storage now requires `CacheIdentity` and `prefix_cache_max_bytes` at
   Engine construction. Keys include weights, format, dtype, semantics, shard and
   cache geometry; older keys intentionally miss. Invalid/overlapping exports and

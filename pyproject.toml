@@ -10,7 +10,7 @@ description = "A small Rust substrate for model-specific inference engines"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-license-files = ["LICENSE", "NOTICE", "third_party/upstream/NOTICE", "crates/orbitinfer-recipe/licenses/*.txt"]
+license-files = ["LICENSE", "NOTICE", "crates/orbitinfer-recipe/licenses/*.txt"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
@@ -74,7 +74,6 @@ python-packages = ["orbitinfer"]
 features = ["pyo3/extension-module"]
 include = [
   { path = "orbitinfer/backend/cuda/sampling_topk.cu", format = ["sdist", "wheel"] },
-  { path = "third_party/upstream/import.json", format = "sdist" },
   { path = "docs/source-import.md", format = "sdist" },
 ]
 

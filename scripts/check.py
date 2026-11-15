@@ -1,4 +1,4 @@
-"""Run the source-import gates. No GPU model or weights are loaded."""
+"""Run the repository gates. No GPU model or weights are loaded."""
 
 import os
 import subprocess
@@ -54,14 +54,14 @@ def main():
         run(sys.executable, "-m", "venv", out / "venv")
         python = out / "venv/bin/python"
         run("uv", "pip", "install", "--python", python, wheels[0])
-        run(python, "-I", ROOT / "examples/control_plane.py", cwd=out)
+        run(python, "-I", ROOT / "tests/installed/check_runtime.py", cwd=out)
         run(
             python,
             "-I",
             "-c",
             "import sys, orbitinfer; "
             "from orbitinfer.integrations.orbitkv import OrbitKVCacheStorage; "
-            "imported = {'torch', 'orbitkv', 'resin', 'flashinfer', 'mlx'} & sys.modules.keys(); "
+            "imported = {'torch', 'orbitkv', 'flashinfer', 'mlx'} & sys.modules.keys(); "
             "wrong = orbitinfer.Engine.__module__ != 'orbitinfer._native'; "
             "sys.exit(f'unexpected import: {imported}, binding={wrong}' if imported or wrong else 0)",
             cwd=out,

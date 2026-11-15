@@ -68,7 +68,7 @@ execute straightforwardly.
 Separately installable model packages already use this boundary to add models
 and select kernels. The [model authoring reference](model-forward-pass.md)
 documents preparation and execution requirements. The
-[add-orbitinfer-model skill](../skills/add-orbitinfer-model/SKILL.md) provides the workflow
+[add-orbitinfer-model skill](../.agents/skills/add-orbitinfer-model/SKILL.md) provides the workflow
 for implementing and validating a runner.
 
 ## Lifecycle
