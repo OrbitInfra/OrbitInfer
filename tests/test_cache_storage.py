@@ -11,7 +11,11 @@ import torch
 from test_flat_cache import RecordingCachedRunner
 
 from orbitinfer import CacheGroupLayout, CacheLayout, Engine, SamplingParams
-from orbitinfer.cache_storage import MemoryCacheStorage
+from orbitinfer.cache_storage import (
+    CacheRetirementError,
+    CacheTransfer,
+    MemoryCacheStorage,
+)
 
 
 def make_engine(
@@ -99,9 +103,9 @@ def test_memory_bytes_capacity_and_scatter_gather():
             known[key] if store.lookup((key,)).result()[0] else bytes(source.tolist())
         )
         known[key] = expected
-        assert store.store((key,), ({"x": source[:1], "y": source[1:]},)).result()
+        assert store.store((key,), ({"x": source[:1], "y": source[1:]},)).wait()
         for future, target, contents in pending:
-            assert future.result() and bytes(target.tolist()) == contents
+            assert future.wait() and bytes(target.tolist()) == contents
         pending.clear()
         source.fill_(122)
         for _ in range(2):
@@ -116,20 +120,20 @@ def test_memory_bytes_capacity_and_scatter_gather():
         assert store.nbytes <= 10
         assert sum(store.lookup((b"a", b"b", b"c")).result()) <= 2
     for future, target, contents in pending:
-        assert future.result() and bytes(target.tolist()) == contents
-    assert not store.load((key,), ({"different": target},)).result()
+        assert future.wait() and bytes(target.tolist()) == contents
+    assert not store.load((key,), ({"different": target},)).wait()
     store.close()
     store = MemoryCacheStorage(max_bytes=0)
-    assert store.store((b"",), ({},)).result()
+    assert store.store((b"",), ({},)).wait()
     assert store.lookup((b"",)).result() == (True,)
-    assert store.load((b"",), ({},)).result() and store.nbytes == 0
+    assert store.load((b"",), ({},)).wait() and store.nbytes == 0
     store.close()
     store = MemoryCacheStorage(max_bytes=6)
     regions = ({"x": torch.tensor([1], dtype=torch.uint8)},) * 3
-    assert store.store((b"a", b"b"), regions[:2]).result()
-    assert store.store((b"a", b"c"), regions[:2]).result()
+    assert store.store((b"a", b"b"), regions[:2]).wait()
+    assert store.store((b"a", b"c"), regions[:2]).wait()
     assert store.lookup((b"a", b"b", b"c")).result() == (True, False, True)
-    assert not store.store((b"a", b"c", b"d"), regions).result()
+    assert not store.store((b"a", b"c", b"d"), regions).wait()
     assert store.lookup((b"a", b"c", b"d")).result() == (True, True, False)
     store.close()
     store, other = (
@@ -175,16 +179,16 @@ def test_queued_reads_retire_before_eviction_and_close():
 
     store, fence, launch = DelayedCopies(max_bytes=4), Fence(), Event()
     original = torch.tensor([31, 47], dtype=torch.uint8)
-    assert store.store((b"a",), ({"x": original},)).result()
+    assert store.store((b"a",), ({"x": original},)).wait()
     store.streams["fake"] = fence
     outputs = [torch.full_like(original, 99) for _ in range(3)]
     blocker = store.executor.submit(launch.wait)
     reads = [store.load((b"a",), ({"x": output},)) for output in outputs]
-    assert reads[-1].cancel()
+    assert reads[-1].outcome.cancel()
     reserve = store._reserve
 
     def retire_before_reuse(size, protected):
-        assert all(future.done() for future in reads)
+        assert all(transfer.retirement.done() for transfer in reads)
         assert all(torch.equal(output, original) for output in outputs[:2])
         return reserve(size, protected)
 
@@ -193,13 +197,15 @@ def test_queued_reads_retire_before_eviction_and_close():
     try:
         launch.set()
         assert fence.entered.wait(2)
-        assert len(fence.copies) == 2 and not any(f.done() for f in reads[:2])
+        assert len(fence.copies) == 2 and not any(
+            t.retirement.done() for t in reads[:2]
+        )
         assert store.lookup((b"a", b"b")).result() == (True, False)
-        assert not replacement.done()
+        assert not replacement.retirement.done()
     finally:
         fence.ready.set()
-    assert replacement.result(2) and blocker.result(2)
-    assert reads[-1].cancelled() and outputs[-1].tolist() == [99, 99]
+    assert replacement.wait(2) and blocker.result(2)
+    assert reads[-1].outcome.cancelled() and outputs[-1].tolist() == [99, 99]
     assert store.lookup((b"a", b"b")).result() == (False, True)
 
     launch.clear()
@@ -214,11 +220,11 @@ def test_queued_reads_retire_before_eviction_and_close():
             assert fence.entered.wait(2)
             with pytest.raises(TimeoutError):
                 closing.result(0.02)
-            assert not any(future.done() for future in closing_reads)
+            assert not any(t.retirement.done() for t in closing_reads)
         finally:
             fence.ready.set()
         closing.result(2)
-    assert all(future.result() for future in closing_reads)
+    assert all(transfer.wait() for transfer in closing_reads)
     assert all(torch.equal(output, original + 1) for output in outputs[:2])
     with pytest.raises(RuntimeError, match="closed"):
         store.load((b"b",), ({"x": outputs[0]},))
@@ -231,18 +237,21 @@ def test_failed_read_fence_preserves_unretired_buffers():
 
     store = MemoryCacheStorage(max_bytes=4)
     value = torch.tensor([31, 47], dtype=torch.uint8)
-    assert store.store((b"a",), ({"x": value},)).result()
+    assert store.store((b"a",), ({"x": value},)).wait()
     store.streams["fake"] = BrokenFence()
     destination = torch.empty_like(value)
     retained = ref(destination)
-    assert store.load((b"a",), ({"x": destination},)).result() is None
+    with pytest.raises(CacheRetirementError):
+        store.load((b"a",), ({"x": destination},)).wait()
     assert store.halted
-    assert store.store((b"b",), ({"x": value},)).result() is False
+    assert store.store((b"b",), ({"x": value},)).wait() is False
     untouched = torch.full_like(value, 99)
-    assert store.load((b"a",), ({"x": untouched},)).result() is False
+    assert store.load((b"a",), ({"x": untouched},)).wait() is False
     assert untouched.tolist() == [99, 99] and b"a" in store.objects
     del destination
-    store.close()
+    for _ in range(2):
+        with pytest.raises(CacheRetirementError):
+            store.close()
     assert retained() is not None
 
 
@@ -345,16 +354,27 @@ def test_async_progress_cancellation_and_retirement(delay):
     method = getattr(store, delay)
     with ThreadPoolExecutor(3) as workers:
 
-        def copy(*args):
-            if not gate.wait(2):
-                return False
-            value = method(*args).result()
-            return False if delay == "load" else value
-
         def submit(*args):
-            future = workers.submit(copy, *args)
+            retirement = Future()
+
+            def copy():
+                try:
+                    assert gate.wait(30)
+                    operation = method(*args)
+                    if delay == "lookup":
+                        return operation.result()
+                    operation.retirement.result()
+                    retirement.set_result(None)
+                    value = operation.outcome.result()
+                    return False if delay == "load" else value
+                except BaseException as error:
+                    if not retirement.done():
+                        retirement.set_exception(error)
+                    raise
+
+            future = workers.submit(copy)
             pending.append((future, args[1] if len(args) == 2 else ()))
-            return future
+            return future if delay == "lookup" else CacheTransfer(future, retirement)
 
         setattr(store, delay, submit)
         waiting = engine.submit([1, 2, 3], sampling_params=params)

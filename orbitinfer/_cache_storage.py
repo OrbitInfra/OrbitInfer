@@ -3,10 +3,12 @@
 
 import hashlib
 import math
+from concurrent.futures import Future
 
 import numpy as np
 
 from orbitinfer._native import CacheGroupFamily
+from orbitinfer.cache_storage import CacheTransfer
 
 
 class _Operation:
@@ -24,6 +26,46 @@ class _Operation:
         return None if value is None else self.finish(value)
 
 
+class _TransferOperation:
+    """Retain actual exported views until the provider proves physical retirement."""
+
+    def __init__(self, owner, buffers):
+        self.owner, self.buffers = owner, buffers
+        self.transfer = None
+        self.unquiesced = False
+
+    def quarantine(self):
+        self.unquiesced = True
+        self.owner.halted = True
+
+    def poll(self, wait=False):
+        if self.unquiesced or self.transfer is None:
+            return None
+        receipt = self.transfer.retirement
+        if not wait and not receipt.done():
+            return None
+        try:
+            if receipt.result() is not None:
+                self.quarantine()
+                return None
+        except BaseException:
+            # A logical failure, cancelled future or failed fence is not a receipt.
+            self.quarantine()
+            return None
+        outcome = self.transfer.outcome
+        if not wait and not outcome.done():
+            return None
+        try:
+            # Inspect failure without re-raising a stored exception: its traceback
+            # would otherwise retain this operation and its retired buffer views.
+            if outcome.cancelled() or outcome.exception() is not None:
+                return 0
+            result = outcome.result()
+            return int(result is True)
+        except BaseException:
+            return 0  # Only a successful retirement receipt makes failure reusable.
+
+
 class _PrefixStorage:
     def __init__(self, store, runner, layout):
         self.runner = runner
@@ -33,6 +75,7 @@ class _PrefixStorage:
         if buffers((), prefix_length=0):
             raise ValueError("empty cache export must return no blocks")
         self.store, self.buffers = store, buffers
+        self.halted = False
         if layout is None:
             raise ValueError("prefix storage requires a managed cache layout")
         self.groups = layout.groups
@@ -57,6 +100,10 @@ class _PrefixStorage:
         return keys
 
     def lookup(self, key):
+        if self.halted:
+            future = Future()
+            future.set_result(0)
+            return _Operation(self, future)
         bases = self._keys(key)
         tags = ([b"h"] if self.history else []) + [b"t"]
         keys = tuple(key + tag for tag in tags for key in bases)
@@ -73,6 +120,10 @@ class _PrefixStorage:
         return _Operation(self, self.store.lookup(keys), matched)
 
     def transfer(self, key, groups, load):
+        if self.halted:
+            future = Future()
+            future.set_result(0)  # No exporter or provider call was made.
+            return _Operation(self, future)
         import torch
 
         tensor_type, byte_dtype = torch.Tensor, torch.uint8
@@ -102,5 +153,16 @@ class _PrefixStorage:
         keys.append(bases[-1] + b"t")
         buffers.append(tail)
         buffers = tuple(buffers)
-        future = (self.store.load if load else self.store.store)(tuple(keys), buffers)
-        return _Operation(self, future, buffers=buffers)
+        operation = _TransferOperation(self, buffers)
+        try:
+            transfer = (self.store.load if load else self.store.store)(
+                tuple(keys), buffers
+            )
+            if not isinstance(transfer, CacheTransfer):
+                raise TypeError("storage load/store must return CacheTransfer")
+            operation.transfer = transfer
+        except BaseException:
+            # The provider may have accepted a copy before raising. Keep the
+            # exact views even if it did not return an operation handle.
+            operation.quarantine()
+        return operation

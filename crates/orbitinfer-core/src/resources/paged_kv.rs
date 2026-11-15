@@ -69,7 +69,13 @@ pub struct PrefixCacheMetrics {
 
 pub type PrefixStorageGroup = (u32, Vec<(u32, u32)>);
 pub type StorageOp = Box<dyn PrefixStorageOperation>;
+/// A storage job retained with its page loans until physical retirement.
 pub trait PrefixStorageOperation: fmt::Debug + Send + Sync {
+    /// Return a matched-prefix length for lookup, or success (one) / failure
+    /// (zero) for transfer. A terminal transfer result is a release receipt:
+    /// every access to borrowed backing must have ended, even on failure.
+    /// `None` retains the job and its loans, including after a failed fence.
+    /// `wait` permits blocking for the receipt; it never fabricates one.
     fn poll(&mut self, wait: bool) -> Option<u32>;
 }
 pub trait PrefixStorage: fmt::Debug + Send + Sync {

@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from threading import Lock
+from time import monotonic
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
@@ -14,16 +16,73 @@ if TYPE_CHECKING:
 Regions = Mapping[str, "Tensor"]
 
 
+class CacheRetirementError(RuntimeError):
+    """Borrowed memory may still be accessed; retain owners and stop admission."""
+
+
+@dataclass(frozen=True, slots=True)
+class CacheTransfer:
+    """One accepted storage transfer with independent outcome and retirement.
+
+    Providers complete ``outcome`` with a bool or an operation exception.
+    They complete ``retirement`` successfully with None only after every access
+    to borrowed buffers has ended. A failed or cancelled retirement future is
+    not a release receipt. Consumers must not complete these futures themselves.
+    Cancelling the outcome does not prove retirement or authorize replay.
+    """
+
+    outcome: Future[bool]
+    retirement: Future[None]
+
+    def __post_init__(self):
+        if not isinstance(self.outcome, Future) or not isinstance(
+            self.retirement, Future
+        ):
+            raise TypeError("cache transfer requires outcome and retirement futures")
+        if self.outcome is self.retirement:
+            raise ValueError("outcome and retirement must be separate futures")
+
+    def wait(self, timeout: float | None = None) -> bool:
+        """Wait for both receipts within one timeout budget.
+
+        A timeout does not cancel I/O or release buffers. Retirement failures
+        raise CacheRetirementError. Operation exceptions propagate only after
+        retirement is proven; a false outcome is then safe to discard.
+        """
+        deadline = None if timeout is None else monotonic() + timeout
+        try:
+            receipt = self.retirement.result(timeout)
+        except Exception as error:
+            if not self.retirement.done():
+                raise  # A waiting timeout; the provider still owns the operation.
+            raise CacheRetirementError(
+                "cache transfer did not prove retirement"
+            ) from error
+        if receipt is not None:
+            raise CacheRetirementError("invalid cache retirement receipt")
+        remaining = None if deadline is None else max(0, deadline - monotonic())
+        outcome = self.outcome.result(remaining)
+        if type(outcome) is not bool:
+            raise TypeError("cache transfer outcome must be bool")
+        return outcome
+
+
 class CacheStorage(Protocol):
-    """Nonblocking submission; terminal transfer results prove buffer retirement."""
+    """Nonblocking lookup and transfer submission over immutable byte objects.
+
+    Transfer methods return CacheTransfer promptly. Once submission is attempted,
+    an exception without a receipt is conservatively unquiesced. Preflight and
+    resource rejection should return a failed outcome with successful retirement
+    when no buffer access was accepted. Providers own their internal tiers.
+    """
 
     def lookup(self, keys: Sequence[bytes]) -> Future[tuple[bool, ...]]: ...
     def load(
         self, keys: Sequence[bytes], buffers: Sequence[Regions]
-    ) -> Future[bool | None]: ...
+    ) -> CacheTransfer: ...
     def store(
         self, keys: Sequence[bytes], buffers: Sequence[Regions]
-    ) -> Future[bool | None]: ...
+    ) -> CacheTransfer: ...
 
 
 # A failed device fence cannot authorize reclaiming transfer memory.
@@ -208,11 +267,18 @@ class MemoryCacheStorage:
         except BaseException:
             self.halted = True
             _UNRETIRED.append((self, pending))
-        for future, _, _, _, finish, result in pending:
+        for transfer, _, _, _, finish, result in pending:
+            if self.halted:
+                transfer.outcome.set_result(False)
+                transfer.retirement.set_exception(
+                    CacheRetirementError("cache storage device fence failed")
+                )
+                continue
+            transfer.retirement.set_result(None)
             try:
-                future.set_result(None if self.halted else finish(result))
+                transfer.outcome.set_result(finish(result))
             except BaseException as error:
-                future.set_exception(error)  # The fence already proved retirement.
+                transfer.outcome.set_exception(error)  # Retirement is already proven.
 
     def _retire_task(self):
         self._retire_queued = False
@@ -226,15 +292,20 @@ class MemoryCacheStorage:
 
         devices = {r.device for b in buffers for r in b.values() if r.is_cuda}
         ready = {d: torch.cuda.current_stream(d).record_event() for d in devices}
-        future = Future()
+        transfer = CacheTransfer(Future(), Future())
+        # Consumers may cancel a queued outcome, but may not cancel the owner's
+        # retirement accounting. Only run()/the device fence produces its receipt.
+        transfer.retirement.set_running_or_notify_cancel()
 
         def run():
-            if not future.set_running_or_notify_cancel():
+            if not transfer.outcome.set_running_or_notify_cancel():
+                transfer.retirement.set_result(None)  # No access was accepted.
                 return
             if not defer:
                 self._retire()  # Eviction must not reuse an earlier read's host bytes.
             if self.halted:
-                future.set_result(False)
+                transfer.outcome.set_result(False)
+                transfer.retirement.set_result(None)  # This operation posted nothing.
                 return
             try:
                 for device, event in ready.items():
@@ -246,7 +317,7 @@ class MemoryCacheStorage:
                     result = action()
             except BaseException:
                 result = False
-            self._pending.append((future, action, buffers, ready, finish, result))
+            self._pending.append((transfer, action, buffers, ready, finish, result))
             if not defer:
                 self._retire()
             else:
@@ -259,7 +330,7 @@ class MemoryCacheStorage:
             if self.closed:
                 raise RuntimeError("cache storage is closed")
             self.executor.submit(run)
-        return future
+        return transfer
 
     def close(self):
         with self._lock:
@@ -268,3 +339,5 @@ class MemoryCacheStorage:
                 self._closing = self.executor.submit(self._retire)
         self._closing.result()
         self.executor.shutdown(wait=True)
+        if self.halted:
+            raise CacheRetirementError("cache storage retains unretired buffers")

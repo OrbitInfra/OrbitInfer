@@ -24,7 +24,8 @@ The complete source import includes CUDA model runners, MLX/Metal runners,
 Torch reference models, serving tools, benchmarks and tests. The first planned
 installed target is DeepSeek-V4.1-Flash on SM100. No complete GPU model profile
 has been qualified for OrbitInfer. See the [plan](docs/completion-plan.md) and
-[source import record](docs/source-import.md).
+[source import record](docs/source-import.md). Interface changes are recorded in
+the [change notes](docs/releases.md).
 
 ## Features
 
@@ -33,7 +34,7 @@ Start with the two-page [architecture overview](docs/architecture.md).
 - [Rust batch scheduler](docs/kernel-boundary.md)
   - [Unified slab-based cache pool (KV, SWA, Recurrent)](docs/cache-pool.md)
     - [Pluggable prefix cache storage](docs/cache-storage.md)
-    - [Hierarchical external KV design](docs/external-kv-design.md) (proposal)
+    - [Hierarchical external KV design](docs/external-kv-design.md) (adapters planned)
   - [Speculative decoding (MTP, DSpark)](docs/model-forward-pass.md)
   - [Zero-overhead overlap scheduling](docs/scheduler.md)
   - [Engine metrics and Prometheus export](docs/metrics.md)

@@ -17,6 +17,13 @@ enabling an installed profile, prove that actual arena backing, Python owners
 and registrations survive failed device completion and final-reference drop.
 The imported quarantine controls alone do not establish that proof.
 
+External storage now reports logical outcome and borrowed-buffer retirement
+separately through `CacheTransfer`. The native storage job stays charged until
+the binding observes a successful retirement receipt. Failed receipts retain
+exact exported views and fence that storage binding, including after final
+Engine drop. This proves the Python storage boundary on CPU; it does not close
+the remaining native-runner or installed GPU lifetime audit.
+
 ## Runtime owners
 
 OrbitInfer separates request and resource ownership from model-specific execution.
