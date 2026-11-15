@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import faulthandler
+import gc
 import json
 import re
 import socket
@@ -14,18 +15,23 @@ import urllib.request
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from weakref import ref
 
 import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
+from gloo_helpers import release_cpu_group_handles
 
 import orbitinfer
 from orbitinfer import Parallelism, RunnerConfig
 from orbitinfer.backend.distributed import DistributedEngine, DistributedWorker
 from orbitinfer.backend.metrics import RunnerMetrics
 from orbitinfer.backend.sampling import format_output, prompt_scores
-from orbitinfer.backend.topology import ParallelGroups, ParallelismCapabilities
+from orbitinfer.backend.topology import (
+    ParallelGroups,
+    ParallelismCapabilities,
+)
 from orbitinfer.server import HttpServer
 
 
@@ -320,6 +326,7 @@ def _serve_rank(rank, world_size, directory, port, case):
         )
         groups.close()
         dist.destroy_process_group()
+        release_cpu_group_handles(groups, workers=(worker,))
 
 
 def _post(base, rank=None, *, content="hello", headers=None, **options):
@@ -392,6 +399,51 @@ def test_rank_fixture_joins_watcher_before_destroying_process_groups(
         for thread in threads:
             thread.join(timeout=30)
             assert not thread.is_alive()
+
+
+def test_failed_runner_retention_does_not_leave_fixture_gloo_threads_alive(tmp_path):
+    from orbitinfer.backend.cuda.failures import PostAcceptCudaError
+
+    dist.init_process_group(
+        "gloo", init_method=f"file://{tmp_path}/rendezvous", rank=0, world_size=1
+    )
+    groups = ParallelGroups.create(Parallelism(), device_backend="gloo")
+    worker = SimpleNamespace(_wire=SimpleNamespace(group=groups.replica.handle))
+
+    class Runner:
+        def __init__(self):
+            self.groups = groups
+            self.backing = torch.full((64,), 41, dtype=torch.uint8)
+
+        def forward(self, plan):
+            raise PostAcceptCudaError("retained fixture execution")
+
+    runner = Runner()
+    engine = orbitinfer.Engine(runner)
+    owner, backing, native = (
+        ref(runner),
+        ref(runner.backing),
+        ref(groups.replica.handle),
+    )
+    engine.submit([1])
+    with pytest.raises(RuntimeError, match="retained fixture execution"):
+        engine.step()
+    assert engine.poisoned
+    del engine, runner
+    gc.collect()
+    assert owner() is not None and backing() is not None
+    try:
+        # Force the old teardown: it unregisters the world but the quarantined
+        # runner still keeps the native Gloo group. No timing or sleeps needed.
+        dist.destroy_process_group()
+        gc.collect()
+        assert native() is not None
+    finally:
+        release_cpu_group_handles(groups, workers=(worker,))
+    assert native() is None
+    retained = backing()
+    assert owner() is not None and retained is not None
+    assert torch.all(retained == 41)
 
 
 def _wait_ready(base, directory):
