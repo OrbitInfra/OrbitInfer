@@ -2,7 +2,7 @@
 
 Design and implementation sequence. The current interface and independent
 retirement receipts are described in [prefix cache storage](cache-storage.md).
-Identity binding, byte budgets and the provider adapters remain proposed work.
+Identity binding and borrowed-byte budgets are implemented; provider adapters remain the next step.
 No OrbitKV, Mooncake Store or LMCache adapter is implemented yet.
 
 ## Scope
@@ -62,8 +62,8 @@ not a cache provider or a global directory.
 | Existing owner | Keep | Work required before integration |
 | --- | --- | --- |
 | `EngineCore` and `PagedKvResources` | Prefix matching, page allocation, storage jobs and commit | Prove final-reference retention of actual backing; add byte accounting for external operations |
-| `PrefixStorage` / `PrefixStorageOperation` | Native lookup/transfer/poll boundary; Python outcome/retirement receipts | Complete the remaining native-runner backing audit without a second progress loop |
-| `_PrefixStorage` / `CacheStorage` | `lookup`, `load`, `store`; immutable objects | Bind representation identity and validate provider retirement semantics |
+| `PrefixStorage` / `PrefixStorageOperation` | Native lookup/transfer/poll boundary; Python outcome/retirement receipts | Core retains an explicit backing owner; Python also retains uncertain completions and temporary failure frames |
+| `_PrefixStorage` / `CacheStorage` | `lookup`, `load`, `store`; immutable objects | Explicit CacheIdentity plus cache geometry; bound borrowed bytes and metadata until retirement |
 | `cache_storage_buffers` | Runner's named region views, no export-time copy | Retain arena and registration owners, generation and producer readiness explicitly |
 | `MemoryCacheStorage` | Bounded DRAM reference provider and existing controls | Audit final-owner and failed-fence paths before declaring the new contract complete |
 
@@ -142,7 +142,7 @@ retirement futures. A logical exception cannot release buffers. The binding
 returns a terminal native transfer result only after a successful retirement
 receipt; failed retirement is sticky, retains the actual exported views and
 fences new storage work. This is tested through the real Engine, including final
-reference drop. The wider native-runner and GPU execution audit remains in P0.
+reference drop. Native final-reference controls retain the arena owner and charges; installed GPU faults remain unqualified.
 
 For load, acquire private destination write leases before accepting physical
 work, and order copies after source readiness. Make the restored pages visible
@@ -266,7 +266,7 @@ must force interleavings and inspect backing and budget receipts.
 1. **P0: ownership and identity.** Audit the current Rust/Python path, retain
    actual arena backing across final drops, and add identity and byte bounds.
    The Python storage receipt/view-retention controls are implemented. Native
-   execution backing, identity binding and byte accounting remain open.
+   execution backing, identity binding and byte accounting now have CPU controls. Installed device validation is still required.
 2. **P3a: OrbitKV local DRAM.** Add the thin adapter and a CPU contract test.
    Write the SM100 runner export/producer/readiness gate; run it only on an
    explicitly authorized installed host. Do not modify OrbitKV from this work.

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict, defaultdict
 from collections.abc import Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from threading import Lock
 from time import monotonic
 from typing import TYPE_CHECKING, Protocol
@@ -14,6 +14,34 @@ if TYPE_CHECKING:
     from torch import Tensor
 
 Regions = Mapping[str, "Tensor"]
+
+
+@dataclass(frozen=True, slots=True)
+class CacheIdentity:
+    """Authority for reusing external KV bytes; every field is required.
+
+    Use immutable weight and format revisions, the stored dtype, and logical
+    shard coordinates (TP/PP rank and world sizes). `semantics` identifies
+    attention/position/adapter settings that change KV values. Each UTF-8 field
+    is 1..1024 bytes. Arena capacity and physical device numbers are not identity.
+    The Engine additionally hashes its ordered cache geometry. Incorrect caller
+    identity cannot be repaired by inspecting opaque bytes.
+    """
+
+    model: str
+    weights: str
+    format: str
+    dtype: str
+    shard: str
+    semantics: str
+
+    def __post_init__(self):
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if not isinstance(value, str) or not 1 <= len(value.encode()) <= 1024:
+                raise ValueError(
+                    f"cache identity {field.name} must be 1..1024 UTF-8 bytes"
+                )
 
 
 class CacheRetirementError(RuntimeError):
@@ -90,11 +118,19 @@ _UNRETIRED = []
 
 
 class MemoryCacheStorage:
-    def __init__(self, max_bytes):
+    def __init__(self, max_bytes, *, max_inflight=64, max_pending_bytes=None):
         import torch
 
         if max_bytes < 0:
             raise ValueError("max_bytes must be nonnegative")
+        if type(max_inflight) is not int or max_inflight <= 0:
+            raise ValueError("max_inflight must be positive")
+        if max_pending_bytes is None:
+            max_pending_bytes = max(1, max_bytes) * max_inflight
+        if type(max_pending_bytes) is not int or max_pending_bytes < 0:
+            raise ValueError("max_pending_bytes must be nonnegative")
+        self.max_inflight, self.max_pending_bytes = max_inflight, max_pending_bytes
+        self.pending_count = self.pending_bytes = 0
         self.max_bytes, self.nbytes = max_bytes, 0
         self.objects, self.executor = OrderedDict(), ThreadPoolExecutor(1)
         self.pool = torch.empty(
@@ -290,9 +326,37 @@ class MemoryCacheStorage:
         if self.closed:
             raise RuntimeError("cache storage is closed")
 
-        devices = {r.device for b in buffers for r in b.values() if r.is_cuda}
-        ready = {d: torch.cuda.current_stream(d).record_event() for d in devices}
+        charge = sum(r.nbytes for b in buffers for r in b.values())
         transfer = CacheTransfer(Future(), Future())
+        with self._lock:
+            if self.closed:
+                raise RuntimeError("cache storage is closed")
+            if (
+                self.halted
+                or self.pending_count >= self.max_inflight
+                or charge > self.max_pending_bytes - self.pending_bytes
+            ):
+                transfer.outcome.set_result(False)
+                transfer.retirement.set_result(None)  # Nothing was enqueued.
+                return transfer
+            self.pending_count += 1
+            self.pending_bytes += charge
+
+        def release(receipt):
+            if receipt.cancelled() or receipt.exception() is not None:
+                return  # Failed fences keep both queued count and bytes charged.
+            with self._lock:
+                self.pending_count -= 1
+                self.pending_bytes -= charge
+
+        transfer.retirement.add_done_callback(release)
+        try:
+            devices = {r.device for b in buffers for r in b.values() if r.is_cuda}
+            ready = {d: torch.cuda.current_stream(d).record_event() for d in devices}
+        except BaseException as error:
+            transfer.outcome.set_exception(error)
+            transfer.retirement.set_result(None)  # No copy or stream wait was issued.
+            return transfer
         # Consumers may cancel a queued outcome, but may not cancel the owner's
         # retirement accounting. Only run()/the device fence produces its receipt.
         transfer.retirement.set_running_or_notify_cancel()
@@ -326,10 +390,14 @@ class MemoryCacheStorage:
                         self._retire_queued = True
                         self.executor.submit(self._retire_task)
 
-        with self._lock:
-            if self.closed:
-                raise RuntimeError("cache storage is closed")
-            self.executor.submit(run)
+        try:
+            with self._lock:
+                if self.closed:
+                    raise RuntimeError("cache storage is closed")
+                self.executor.submit(run)
+        except BaseException as error:
+            transfer.outcome.set_exception(error)
+            transfer.retirement.set_result(None)  # The worker never accepted this job.
         return transfer
 
     def close(self):

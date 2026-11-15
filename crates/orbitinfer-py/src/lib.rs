@@ -1261,6 +1261,7 @@ struct Engine {
     overlap_enqueues: u64,
     overlap_continuations: u64,
     runner_metrics: Option<Py<PyAny>>,
+    prefix_storage: Option<Py<PyAny>>,
 }
 
 struct PendingExecution {
@@ -1289,6 +1290,7 @@ impl Engine {
                     Ok(feedback) if feedback.is_none() => None,
                     Ok(feedback) => Some(feedback),
                     Err(error) => {
+                        self.retain_failure_frames(py, &error);
                         self.core.poison_message(format!(
                             "accepted completion feedback failed: {error}"
                         ));
@@ -1318,6 +1320,7 @@ impl Engine {
                 let result = match enqueue.bind(py).call((&next_plan,), Some(&kwargs)) {
                     Ok(result) => result.unbind(),
                     Err(error) => {
+                        self.retain_failure_frames(py, &error);
                         self.core
                             .poison_message(format!("overlapped enqueue failed: {error}"));
                         return Err(error);
@@ -1326,6 +1329,7 @@ impl Engine {
                 let asynchronous = match runner_result_is_async(result.bind(py)) {
                     Ok(asynchronous) => asynchronous,
                     Err(error) => {
+                        self.retain_failure_frames(py, &error);
                         self.failed_executions.push(result);
                         self.core.poison_message(format!(
                             "accepted completion inspection failed: {error}"
@@ -1499,6 +1503,14 @@ impl Engine {
         })
     }
 
+    fn retain_failure_frames(&mut self, py: Python<'_>, error: &PyErr) {
+        if let Some(traceback) = error.traceback(py) {
+            // Failed frames may own temporary staging/output buffers. Keep the
+            // existing chain, not future caller frames appended to this error.
+            self.failed_executions.push(traceback.into_any().unbind());
+        }
+    }
+
     fn fail_output(&mut self, py: Python<'_>, error: PyErr, accepted: bool) -> PyErr {
         let forward = self.runner_forward.clone_ref(py);
         let release = self
@@ -1507,6 +1519,9 @@ impl Engine {
             .map(|value| value.clone_ref(py));
         let mut runner = PythonRunner::new(py, &forward, release.as_ref());
         let accepted = accepted || runner_error_is_post_accept(py, &error);
+        if accepted {
+            self.retain_failure_frames(py, &error);
+        }
         let failure = runner.failed(error, accepted);
         let result = self.core.complete_step_with(&mut runner, Err(failure), Ok);
         result.err();
@@ -1534,7 +1549,7 @@ impl Engine {
 #[pymethods]
 impl Engine {
     #[new]
-    #[pyo3(signature = (runner: "Runner", *, max_running_requests = 32, context_length = 32768, max_top_logprobs = DEFAULT_MAX_TOP_LOGPROBS, scheduler_config = None, prefix_cache = false, prefix_cache_storage: "CacheStorage | None" = None, prefix_cache_max_inflight = None, prefix_cache_storage_policy: r#"Literal["write_through", "write_through_selective"]"# = "write_through_selective", enable_overlap = true, enable_metrics = true))]
+    #[pyo3(signature = (runner: "Runner", *, max_running_requests = 32, context_length = 32768, max_top_logprobs = DEFAULT_MAX_TOP_LOGPROBS, scheduler_config = None, prefix_cache = false, prefix_cache_storage: "CacheStorage | None" = None, prefix_cache_max_inflight = None, prefix_cache_identity: "CacheIdentity | None" = None, prefix_cache_max_bytes = None, prefix_cache_storage_policy: r#"Literal["write_through", "write_through_selective"]"# = "write_through_selective", enable_overlap = true, enable_metrics = true))]
     #[allow(
         clippy::too_many_arguments,
         reason = "Python constructor exposes keyword configuration"
@@ -1549,6 +1564,8 @@ impl Engine {
         prefix_cache: bool,
         prefix_cache_storage: Option<Py<PyAny>>,
         prefix_cache_max_inflight: Option<usize>,
+        prefix_cache_identity: Option<Py<PyAny>>,
+        prefix_cache_max_bytes: Option<u64>,
         prefix_cache_storage_policy: &str,
         enable_overlap: bool,
         enable_metrics: bool,
@@ -1593,6 +1610,7 @@ impl Engine {
                 schedule_conservativeness: scheduler.schedule_conservativeness,
             },
             prefix_cache,
+            Arc::new(runner.clone_ref(py)),
         )
         .map_err(core_error)?;
         core.set_max_top_logprobs(max_top_logprobs);
@@ -1610,11 +1628,19 @@ impl Engine {
         } else {
             None
         };
+        let mut prefix_storage = None;
         if let Some(provider) = prefix_cache_storage {
             let adapter = PyModule::import(py, "orbitinfer._cache_storage")?
                 .getattr("_PrefixStorage")?
-                .call1((provider, runner, &config.cache_layout))?
+                .call1((
+                    provider,
+                    runner,
+                    &config.cache_layout,
+                    prefix_cache_identity,
+                    prefix_cache_max_bytes,
+                ))?
                 .unbind();
+            prefix_storage = Some(adapter.clone_ref(py));
             core.set_prefix_storage(
                 Box::new(cache_storage::PythonPrefixStorage(adapter)),
                 prefix_cache_max_inflight,
@@ -1636,6 +1662,7 @@ impl Engine {
             overlap_enqueues: 0,
             overlap_continuations: 0,
             runner_metrics,
+            prefix_storage,
         })
     }
     #[pyo3(signature = (
@@ -1980,6 +2007,15 @@ impl Engine {
         self.core.cache_occupied_block_count()
     }
 
+    #[getter]
+    /// Borrowed-byte charges are returned only after a successful storage receipt.
+    fn prefix_storage_stats(&self, py: Python<'_>) -> PyResult<Option<Py<PyAny>>> {
+        self.prefix_storage
+            .as_ref()
+            .map(|storage| storage.bind(py).call_method0("stats").map(Bound::unbind))
+            .transpose()
+    }
+
     /// `(entries, hits, misses, evictions)` when prefix caching is enabled.
     #[getter]
     fn prefix_cache_stats(&self) -> Option<(usize, u64, u64, u64)> {
@@ -2006,19 +2042,22 @@ impl Engine {
 
 impl Drop for Engine {
     fn drop(&mut self) {
-        if self.core.closed() || self.core.poisoned() {
-            return;
-        }
-
-        match Python::try_attach(|py| self.close(py)) {
-            Some(Ok(())) => {}
-            Some(Err(error)) => {
-                self.core
-                    .poison_message(format!("Engine destructor cleanup failed: {error}"));
+        if !self.core.closed() && !self.core.poisoned() {
+            match Python::try_attach(|py| self.close(py)) {
+                Some(Ok(())) => {}
+                Some(Err(error)) => self
+                    .core
+                    .poison_message(format!("Engine destructor cleanup failed: {error}")),
+                None => self.core.poison_message(
+                    "Engine destructor could not attach to Python; resources remain quarantined",
+                ),
             }
-            None => self.core.poison_message(
-                "Engine destructor could not attach to Python; resources remain quarantined",
-            ),
+        }
+        if self.core.poisoned() {
+            // The core retains the runner's backing and page charges. These
+            // completion objects can own additional device/host work buffers.
+            std::mem::forget(self.pending.take());
+            std::mem::forget(std::mem::take(&mut self.failed_executions));
         }
     }
 }

@@ -21,10 +21,11 @@ paths inherited by subprocess controls. Current Clippy's nonzero-divisor checks
 are addressed without changing scheduling arithmetic. Keep this CI baseline
 passing before adding providers.
 
-P0 remains open: the Python storage path now retains exact exported views on
-failed retirement and final-reference drop, with forced-interleaving controls.
-Next audit native/device execution backing and enforce representation identity
-and borrowed-byte bounds. P3 begins with the CPU provider contract and OrbitKV
+P0 is implemented at the Rust/Python owner boundary: final drops retain actual
+backing, uncertain completions and page charges; storage keys bind representation
+identity and borrowed bytes are bounded until retirement. CPU controls include
+synchronous failure, asynchronous inspection/harvest failure and a successful
+release control. Installed CUDA execution remains unqualified. P3 begins with the CPU provider contract and OrbitKV
 DRAM integration; SSD and peer profiles follow separately. GPU integration still
 needs installed validation. The first deployment target remains DeepSeek on
 SM100. Other imported runners are available for separate validation.
@@ -32,7 +33,7 @@ SM100. Other imported runners are available for separate validation.
 | Phase | Scope | State |
 | --- | --- | --- |
 | Foundation | Complete runtime, all model packages, tooling, tests and provenance | Source imported; validation in source-import.md; clean CPU gate repairs included |
-| P0 | Final-reference/failed-completion lifetime audit, existing storage integration, real backing, identity and byte bounds | Partial: explicit Python storage receipts and backing-retention controls; native/device audit, identity and byte bounds remain open |
+| P0 | Final-reference/failed-completion lifetime audit, existing storage integration, real backing, identity and byte bounds | Implemented at source level; real backing, identity, byte and metadata bounds verified on CPU; installed CUDA gate unrun |
 | P1 | Full-checkpoint offline DeepSeek numerical comparison on SM100 | Unrun; hardware required |
 | P2 | CUDA graphs, overlap, persistent-state faults and cancellation | Source imported; installed profile unqualified |
 | P3 | OrbitKV DRAM, then SSD/peer through OrbiTE; separate Mooncake Store and LMCache adapters | Design proposed; not implemented; sequence in external-kv-design.md |
@@ -58,3 +59,9 @@ and actual accepted tokens; forced draft acceptance is not throughput evidence.
 The imported deployment scripts and skills are tools, not authorization to run
 cloud jobs, download complete checkpoints or publish packages. OrbitKV and
 OrbiTE integrations remain separate work.
+
+### External-cache installed gate
+
+`uv run --no-sync python tests/hardware/cache_storage_cuda.py --device cuda:0`
+checks GPU views, guards, prefix restore and final-owner quarantine on SM100.
+Written but not run. It does not qualify full-model execution or OrbitKV.

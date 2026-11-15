@@ -17,6 +17,7 @@ use crate::{
     Phase, PlanningConfig, PlanningError, RequestId, RequestProgress, Schedulable, Scheduler,
     Selection, SequenceStep, TokenRange, schedule_ready_prefix,
 };
+use std::any::Any;
 use std::cmp::Reverse;
 use std::fmt;
 use std::num::{NonZeroU32, NonZeroU64, NonZeroUsize};
@@ -546,6 +547,7 @@ struct Batch<P> {
 }
 
 pub struct EngineCore<P> {
+    backing_owner: Option<Arc<dyn Any + Send + Sync>>,
     metrics: Option<EngineMetricsState>,
     in_flight: Option<Batch<P>>,
     continuation: Option<ExecutionPlan<P>>,
@@ -567,13 +569,35 @@ pub struct EngineCore<P> {
     closed: bool,
 }
 
+impl<P> Drop for EngineCore<P> {
+    fn drop(&mut self) {
+        if self.in_flight.is_some() || self.quarantined.is_some() || self.poisoned_error.is_some() {
+            // Drop is not a device receipt. Retain actual backing together with
+            // the bounded batch, logical page charges and storage borrowers.
+            // No cleanup is retried after an uncertain native failure.
+            std::mem::forget(self.backing_owner.take());
+            std::mem::forget(self.in_flight.take());
+            std::mem::forget(self.quarantined.take());
+            std::mem::forget(self.continuation.take());
+            std::mem::forget(self.kv_resources.take());
+        }
+    }
+}
+
 impl<P: Clone> EngineCore<P> {
+    /// Bind the actual arena/runtime owner to the logical page allocator.
+    ///
+    /// `backing_owner` must retain every allocation and runtime resource the
+    /// runner can access, including allocations installed by resource binding.
+    /// Prepared work and uncertain failure keep this owner even after core drop.
+    /// Complete every accepted step and call `close` for orderly retirement.
     pub fn new(
         runner_config: RunnerConfig,
         max_running_requests: usize,
         context_length: u32,
         scheduler_config: SchedulerConfig,
         prefix_cache: bool,
+        backing_owner: Arc<dyn Any + Send + Sync>,
     ) -> Result<Self> {
         let max_running_requests = NonZeroUsize::new(max_running_requests)
             .ok_or_else(|| Error::invalid("max_running_requests must be positive"))?;
@@ -617,6 +641,7 @@ impl<P: Clone> EngineCore<P> {
         let new_token_ratio_decay =
             (new_token_ratio - minimum_new_token_ratio) / NEW_TOKEN_RATIO_DECAY_STEPS;
         Ok(Self {
+            backing_owner: Some(backing_owner),
             metrics: None,
             in_flight: None,
             continuation: None,

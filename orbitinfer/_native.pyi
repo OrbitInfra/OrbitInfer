@@ -1,7 +1,7 @@
 # Adapted for OrbitInfer; see NOTICE and docs/source-import.md.
 from collections.abc import Sequence
 from typing import Any, Final, final
-from orbitinfer.cache_storage import CacheStorage
+from orbitinfer.cache_storage import CacheIdentity, CacheStorage
 from typing import Literal
 from orbitinfer.recipe import Recipe
 from orbitinfer.recipe import ContentBlock
@@ -507,6 +507,8 @@ class Engine:
         prefix_cache: bool = False,
         prefix_cache_storage: "CacheStorage | None" = None,
         prefix_cache_max_inflight: int | None = None,
+        prefix_cache_identity: CacheIdentity | None = None,
+        prefix_cache_max_bytes: int | None = None,
         prefix_cache_storage_policy: 'Literal["write_through", "write_through_selective"]' = "write_through_selective",
         enable_overlap: bool = True,
         enable_metrics: bool = True,
@@ -583,6 +585,13 @@ class Engine:
     def poison_error(self, /) -> str | None: ...
     @property
     def poisoned(self, /) -> bool: ...
+    @property
+    def prefix_storage_stats(self, /) -> dict[str, int | bool | str] | None:
+        """Borrowed bytes, peak, quarantined bytes and preflight rejections.
+
+        Identity and a positive byte limit are required when binding external
+        storage. Failed retirement retains its charge and fences this binding.
+        """
     @property
     def prefix_cache_stats(self, /) -> tuple[int, int, int, int] | None:
         """

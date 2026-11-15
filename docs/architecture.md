@@ -12,17 +12,17 @@ alternative providers. These integrations are not implemented yet. The
 [hierarchical cache proposal](external-kv-design.md) extends the existing storage
 owners without adding a second scheduler or allocator.
 
-Cancellation and logical completion do not prove physical retirement. Before
-enabling an installed profile, prove that actual arena backing, Python owners
-and registrations survive failed device completion and final-reference drop.
-The imported quarantine controls alone do not establish that proof.
+Cancellation and logical completion do not prove physical retirement. CPU controls retain actual arena backing, Python owners and temporary
+completion buffers across uncertain execution and final-reference drop. Installed
+GPU/model profiles still need device-fault and drain validation.
 
 External storage now reports logical outcome and borrowed-buffer retirement
 separately through `CacheTransfer`. The native storage job stays charged until
 the binding observes a successful retirement receipt. Failed receipts retain
 exact exported views and fence that storage binding, including after final
-Engine drop. This proves the Python storage boundary on CPU; it does not close
-the remaining native-runner or installed GPU lifetime audit.
+Engine drop. Identity includes explicit weights, semantics, dtype, format and shard authority
+plus the ordered cache geometry. Borrowed bytes remain charged until retirement.
+These controls prove the Rust/Python ownership boundary on CPU, not GPU execution.
 
 ## Runtime owners
 
@@ -95,9 +95,15 @@ public API that commits arbitrary page IDs. Rust runners implement
 `engine::Runner<P>` and receive an owned `ExecutionPlan<P>`. The native
 [conformance tests](../crates/orbitinfer-core/tests/engine.rs) demonstrate this API
 without a Python interpreter. Native applications bind their arena to the core's
-cache pool and use the same logical runner throughout its lifetime. They call
-`close(&mut runner)` for orderly shutdown; the core does not own the device
-runtime or call back into a runner when it is dropped.
+cache pool and use the same logical runner throughout its lifetime. Pass an `Arc` owning the actual arena and runtime to `EngineCore::new`;
+the owner must include allocations added by resource binding and transient work.
+Call `close(&mut runner)` for orderly shutdown. Core drop cannot call the runner: a
+prepared or quarantined transaction retains its backing owner, page charges and
+accepted payloads. The Python binding supplies the runner itself and additionally
+retains uncertain completion objects and existing failure tracebacks (which may
+own temporary staging). The poisoned engine admits no further execution. This
+intentional quarantine is bounded by the engine's admitted work; it is not a
+recovery mechanism or permission to retry state mutation.
 
 Multiple requests within a batch execute together. With device overlap, an
 initial `step()` can return no events while its batch runs; subsequent steps

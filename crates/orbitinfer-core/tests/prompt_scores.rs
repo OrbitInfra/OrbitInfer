@@ -18,6 +18,7 @@ fn engine(chunk: u32) -> EngineCore<()> {
             ..Default::default()
         },
         false,
+        std::sync::Arc::new(()),
     )
     .unwrap()
 }

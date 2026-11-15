@@ -7,8 +7,8 @@ a storage provider keeps immutable checkpoints outside the
 custom providers can implement other storage tiers through the same interface.
 
 The [hierarchical external KV proposal](external-kv-design.md) specifies identity,
-byte budgets and the planned OrbitKV/Mooncake Store/LMCache adapters. Independent
-operation and retirement receipts are implemented below. The remaining proposal
+byte budgets and the planned OrbitKV/Mooncake Store/LMCache adapters. Identity,
+budgets and independent operation/retirement receipts are implemented below. The remaining proposal
 is not an integration claim; none of those three adapters is available yet.
 
 ## Using the DRAM cache
@@ -17,7 +17,7 @@ Construct a provider and pass it to an Engine with prefix caching enabled. Given
 runner and prompt token IDs:
 
 ```python
-from orbitinfer import Engine, MemoryCacheStorage, SamplingParams
+from orbitinfer import CacheIdentity, Engine, MemoryCacheStorage, SamplingParams
 
 storage = MemoryCacheStorage(max_bytes=8 * 1024**3)  # 8 GiB
 try:
@@ -25,6 +25,12 @@ try:
         runner,
         prefix_cache=True,
         prefix_cache_storage=storage,
+        prefix_cache_identity=CacheIdentity(
+            model="model-id", weights="immutable-weight-revision",
+            format="runner-cache-v1", dtype="bfloat16", shard="tp=0/1,pp=0/1",
+            semantics="attention-rope-adapter-fingerprint",
+        ),
+        prefix_cache_max_bytes=256 * 1024**2,  # Outstanding borrowed views: 256 MiB
     ) as engine:
         request = engine.submit(
             token_ids,
@@ -41,6 +47,9 @@ finally:
 pinned host memory when CUDA is available. Its LRU budget charges object keys,
 region names and payload bytes; general Python and allocator overhead is outside
 that budget. One background worker owns a private CUDA copy stream per device.
+Its queue defaults to 64 transfers (`max_inflight`), with borrowed bytes limited
+to `max_bytes * max_inflight` (`max_pending_bytes` can set a smaller limit).
+Rejection returns a false outcome with a successful no-access receipt.
 It queues pending reads before fencing the stream and completing their futures.
 Writes retire earlier reads before evicting or reusing their host memory.
 
@@ -78,8 +87,9 @@ same top-level field. Reuse requires the same salt and matching text or media
 identity, including when restoring checkpoints from a shared storage provider.
 The salt changes cache keys, not prompt tokens or generated output.
 
-Omitting `cache_salt` or passing `None` (`null` over HTTP) preserves the existing
-unsalted namespace and storage keys. An empty string is a separate namespace.
+Omitting `cache_salt` or passing `None` (`null` over HTTP) selects the unsalted
+namespace. All external keys now include the representation identity; old
+unbound keys intentionally miss. An empty string is a separate namespace.
 Other values must be strings. Salts select cache namespaces; they do not provide
 authentication or access control.
 
@@ -211,3 +221,25 @@ intersecting page rather than only individual live rows.
 The hook must accept empty groups with `prefix_length=0` and return no blocks.
 The Engine uses this capability check during construction. Missing or
 unsupported exporters raise `NotImplementedError` before resources are bound.
+
+## Representation and transfer bounds
+
+External storage requires `prefix_cache_identity=CacheIdentity(...)` and a positive
+`prefix_cache_max_bytes`. The caller supplies authoritative model/weight, format,
+stored dtype, semantic fingerprint and logical shard identity. Do not use mutable
+weight aliases or physical GPU numbers. Identical replicas may share identity;
+different tensor shards must not. The binding hashes this immutable value with
+ordered cache group geometry, replay suffix and decode write span, then the
+length-delimited request namespace and token chain. Arena capacity is excluded.
+A mismatched identity misses before any destination copy; no implicit conversion
+or resharding is performed.
+
+All exports are validated before provider submission: contiguous byte views,
+bounded names and region counts, total bytes and non-overlapping load destinations.
+The limit is 65,536 keys/blocks/regions per operation and 1,024 UTF-8 bytes per name.
+`prefix_cache_max_bytes` charges every exported view, including aliased read-only
+sources, until **both** outcome and a successful retirement receipt are observed.
+An oversized or over-budget operation posts nothing and falls back to prefill.
+A failed receipt keeps its charge and fences the binding. Inspect
+`engine.prefix_storage_stats` for current, peak and quarantined bytes, rejection
+count and last preflight reason. Provider-resident DRAM has its separate budget.

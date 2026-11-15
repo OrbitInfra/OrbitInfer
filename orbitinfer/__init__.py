@@ -33,6 +33,7 @@ from orbitinfer._native import (
     __version__,
 )
 from orbitinfer.cache_storage import (
+    CacheIdentity,
     CacheRetirementError,
     CacheStorage,
     CacheTransfer,
@@ -48,6 +49,7 @@ from orbitinfer.protocols import (
 
 __all__ = [
     "CacheExporter",
+    "CacheIdentity",
     "CacheStorage",
     "CacheTransfer",
     "CacheRetirementError",

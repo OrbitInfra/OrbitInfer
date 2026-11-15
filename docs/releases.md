@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- External storage now requires `CacheIdentity` and `prefix_cache_max_bytes` at
+  Engine construction. Keys include weights, format, dtype, semantics, shard and
+  cache geometry; older keys intentionally miss. Invalid/overlapping exports and
+  byte-limit rejection never call the provider. `prefix_storage_stats` reports
+  borrowed and quarantined bytes. MemoryCacheStorage also bounds queued work.
+- Native `EngineCore::new` now requires an `Arc` owning actual execution backing.
+  Prepared or failed execution retains this owner on final drop. Python supplies
+  its runner and retains uncertain completion/temporary owners. Successful close
+  still releases them; no uncertain execution is replayed.
+
 - External `CacheStorage.load` and `store` now return `CacheTransfer`, with
   separate `outcome` and `retirement` futures, instead of a bool/None future.
   Update providers to publish a successful retirement receipt only after all
