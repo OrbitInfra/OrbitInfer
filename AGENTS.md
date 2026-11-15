@@ -12,7 +12,8 @@ Preserve third-party copyright, licenses, notices and the source manifest.
 - A runner receives a frozen plan. Do not add a second scheduler, page allocator
   or forwarding coordinator. Storage providers extend the existing interface.
 - OrbitKV owns external cache identity and policy. OrbiTE owns byte movement.
-  Their integration is not yet implemented; do not create fake success adapters.
+  The first OrbitKV adapter uses fixed-block GPU registrations and native receipts.
+  Do not create fake success adapters or claim unsupported layouts.
 - Cancel, timeout, logical completion and dropped handles are not physical
   retirement. Preserve actual backing until its last device/transport borrower
   retires. Uncertain cleanup retains ownership and stops admission.

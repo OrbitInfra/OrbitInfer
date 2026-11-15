@@ -19,5 +19,10 @@
   releases pages. Use `transfer.wait(timeout=...)` for standalone blocking calls.
 - `MemoryCacheStorage.close()` reports a failed device fence through
   `CacheRetirementError`; repeated close retains owners without retrying cleanup.
-- No OrbitKV, Mooncake Store or LMCache adapter is shipped yet. See the
+- `OrbitKVCacheStorage` adds source-level fixed-block GPU KV to local DRAM
+  through the existing OrbitKV client. One full-history group is supported;
+  variable window/state slices and SSD/peers are rejected or outside this profile.
+  CPU shim controls are not hardware qualification. Explicit provider close is
+  required; uncertain cleanup and unclosed registrations remain retained.
+- Mooncake Store and LMCache adapters remain planned. See the
   [external KV design](external-kv-design.md) and [implementation plan](completion-plan.md).

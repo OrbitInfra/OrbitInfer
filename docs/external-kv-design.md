@@ -2,7 +2,7 @@
 
 Design and implementation sequence. The current interface and independent
 retirement receipts are described in [prefix cache storage](cache-storage.md).
-Identity binding and borrowed-byte budgets are implemented; provider adapters remain the next step.
+Identity binding and borrowed-byte budgets are implemented; the fixed-block OrbitKV local DRAM adapter is implemented at source level; further profiles remain planned.
 No OrbitKV, Mooncake Store or LMCache adapter is implemented yet.
 
 ## Scope
@@ -267,7 +267,7 @@ must force interleavings and inspect backing and budget receipts.
    actual arena backing across final drops, and add identity and byte bounds.
    The Python storage receipt/view-retention controls are implemented. Native
    execution backing, identity binding and byte accounting now have CPU controls. Installed device validation is still required.
-2. **P3a: OrbitKV local DRAM.** Add the thin adapter and a CPU contract test.
+2. **P3a: OrbitKV local DRAM.** The [thin adapter](orbitkv-dram.md) and CPU contract tests cover fixed full-history GPU blocks. Variable window/state mappings remain open.
    Write the SM100 runner export/producer/readiness gate; run it only on an
    explicitly authorized installed host. Do not modify OrbitKV from this work.
 3. **P3b: OrbitKV SSD and peers.** Separate byte-checked profiles through the

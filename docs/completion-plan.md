@@ -13,8 +13,8 @@ Engine/page allocator, one selected provider and separate outcome/retirement
 receipts. The proposal covers device residency, provider DRAM/SSD and peer
 placement, with OrbitKV first, then independent Mooncake Store and LMCache
 adapters. The first implementation makes load/store outcome and physical
-retirement separate receipts through the existing Engine. No provider adapter
-has been added.
+retirement separate receipts through the existing Engine. A separate OrbitKV adapter maps the existing client to fixed, full-history GPU
+blocks in same-host DRAM; its installed profile is unqualified.
 
 Clean-environment validation includes the CPU test dependencies and model-source
 paths inherited by subprocess controls. Current Clippy's nonzero-divisor checks
@@ -25,8 +25,7 @@ P0 is implemented at the Rust/Python owner boundary: final drops retain actual
 backing, uncertain completions and page charges; storage keys bind representation
 identity and borrowed bytes are bounded until retirement. CPU controls include
 synchronous failure, asynchronous inspection/harvest failure and a successful
-release control. Installed CUDA execution remains unqualified. P3 begins with the CPU provider contract and OrbitKV
-DRAM integration; SSD and peer profiles follow separately. GPU integration still
+release control. Installed CUDA execution remains unqualified. P3 now has CPU contract controls for the fixed-block OrbitKV DRAM adapter; SSD and peer profiles follow separately. GPU integration still
 needs installed validation. The first deployment target remains DeepSeek on
 SM100. Other imported runners are available for separate validation.
 
@@ -36,7 +35,7 @@ SM100. Other imported runners are available for separate validation.
 | P0 | Final-reference/failed-completion lifetime audit, existing storage integration, real backing, identity and byte bounds | Implemented at source level; real backing, identity, byte and metadata bounds verified on CPU; installed CUDA gate unrun |
 | P1 | Full-checkpoint offline DeepSeek numerical comparison on SM100 | Unrun; hardware required |
 | P2 | CUDA graphs, overlap, persistent-state faults and cancellation | Source imported; installed profile unqualified |
-| P3 | OrbitKV DRAM, then SSD/peer through OrbiTE; separate Mooncake Store and LMCache adapters | Design proposed; not implemented; sequence in external-kv-design.md |
+| P3 | OrbitKV DRAM, then SSD/peer through OrbiTE; separate Mooncake Store and LMCache adapters | Local DRAM adapter implemented for one fixed full-history GPU group; CPU client/CUDA shim controls; installed SM100 gate unrun; SSD/peer/window/state mappings deferred |
 | P4 | Packaged serving and streaming lifecycle acceptance | Sources imported; model-serving profile unqualified |
 | P5 | Other CUDA, Torch and MLX runners; measured optimizations | Sources imported; complete-model validation deferred |
 
@@ -65,3 +64,8 @@ OrbiTE integrations remain separate work.
 `uv run --no-sync python tests/hardware/cache_storage_cuda.py --device cuda:0`
 checks GPU views, guards, prefix restore and final-owner quarantine on SM100.
 Written but not run. It does not qualify full-model execution or OrbitKV.
+
+OrbitKV local DRAM: `uv run --no-sync python tests/hardware/orbitkv_dram.py
+--bootstrap-socket /run/orbitkv/orbitkv.sock --metrics-url http://127.0.0.1:9090/metrics
+--device cuda:0 --output /tmp/orbitinfer-orbitkv-dram.json`.
+Requires a DRAM-only Manager; written but not run. See [layout and route limits](orbitkv-dram.md).
