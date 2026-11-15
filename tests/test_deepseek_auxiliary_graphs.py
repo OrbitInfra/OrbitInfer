@@ -88,7 +88,17 @@ def test_auxiliary_callbacks_bind_model_projections_and_preserve_output_dtypes(
     )
     with torch.inference_mode(), runner._prefill_graphs():
         for callback, projection in pairs:
-            values = torch.randn(1, 3, projection.weight.shape[1]).bfloat16()
+            # Graph padding changes the CPU GEMM shape. Small dyadic values keep
+            # every FP32 partial sum exact, so this binding/dtype control can
+            # retain bitwise equality across BLAS kernels and accumulation orders.
+            weight = projection.weight
+            weight.copy_(
+                ((torch.arange(weight.numel()) % 13 - 6) / 8).reshape_as(weight)
+            )
+            width = weight.shape[1]
+            values = (
+                ((torch.arange(3 * width) % 11 - 5) / 8).reshape(1, 3, width).bfloat16()
+            )
             output = callback(values)
             assert output.dtype == projection.output_dtype
             torch.testing.assert_close(output, projection(values), rtol=0, atol=0)

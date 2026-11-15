@@ -241,10 +241,12 @@ def test_parent_fusion_accepts_already_prepared_child_scales(deepgemm):
 
 
 def test_prepared_vocab_head_preserves_last_row_full_logits_and_fp32_output(deepgemm):
-    weight = torch.randn(19, 32).bfloat16().float()
+    # Last-row and full-logits GEMMs can use different BLAS reduction orders.
+    # Keep nonuniform signed rows but make their FP32 sums exactly representable.
+    weight = ((torch.arange(19 * 32) % 17 - 8) / 8).reshape(19, 32)
     source = SimpleNamespace(weight=weight, tensor_parallel=SimpleNamespace(size=1))
     head = PreparedVocabHead(source)
-    hidden = torch.randn(2, 3, 32).bfloat16()
+    hidden = ((torch.arange(2 * 3 * 32) % 13 - 6) / 8).reshape(2, 3, 32).bfloat16()
     expected = F.linear(hidden.float(), weight)
     assert head.weight.dtype == torch.bfloat16
     assert head(hidden).dtype == torch.float32

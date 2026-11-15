@@ -36,10 +36,12 @@ jobs:
         run: uv sync --locked --no-default-groups --group test
       - name: Check source, Rust, Python and installed wheel
         run: uv run --no-sync python scripts/check.py
-      - name: Repeat external cache retirement controls
+      - name: Repeat storage and CPU fixture controls
         run: |
           for iteration in $(seq 1 50); do
-            echo "Storage retirement repetition $iteration/50"
+            echo "CPU owner/fixture repetition $iteration/50"
             uv run --no-sync python -m pytest -q tests/test_cache_retirement.py \
-              tests/test_distributed_http.py::test_rank_fixture_joins_watcher_before_destroying_process_groups
+              tests/test_distributed_http.py::test_rank_fixture_joins_watcher_before_destroying_process_groups \
+              tests/test_deepseek_auxiliary_graphs.py::test_auxiliary_callbacks_bind_model_projections_and_preserve_output_dtypes \
+              models/cuda/tests/test_deepseek_v41_projections.py::test_prepared_vocab_head_preserves_last_row_full_logits_and_fp32_output
           done
